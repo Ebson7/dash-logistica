@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, createContext, useContext, Component, ReactNode } from 'react';
+import React, { useState, useEffect, createContext, useContext, Component, ReactNode, useRef } from 'react';
 import { 
   onAuthStateChanged, 
   signInAnonymously,
@@ -37,7 +37,9 @@ import {
   Maximize,
   Newspaper,
   ArrowRight,
-  Clock
+  Clock,
+  BellRing,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -538,7 +540,15 @@ function DashboardView() {
   const [logs, setLogs] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>(null);
   const [isTVMode, setIsTVMode] = useState(false);
+  const [lastOccurrenceId, setLastOccurrenceId] = useState<string | null>(null);
+  const [showNotification, setShowNotification] = useState<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const today = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    // Initialize audio
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'logs'), where('date', '==', today));
@@ -575,6 +585,27 @@ function DashboardView() {
     }))
   ).sort((a, b) => b.timestamp - a.timestamp);
 
+  // Notification Logic
+  useEffect(() => {
+    if (allOccurrences.length > 0) {
+      const latest = allOccurrences[0];
+      const occurrenceId = `${latest.timestamp}-${latest.deptName}`;
+      
+      if (lastOccurrenceId && occurrenceId !== lastOccurrenceId) {
+        // New occurrence detected!
+        setShowNotification(latest);
+        if (audioRef.current) {
+          audioRef.current.play().catch(e => console.log('Audio play blocked', e));
+        }
+        
+        // Auto hide after 8 seconds
+        setTimeout(() => setShowNotification(null), 8000);
+      }
+      
+      setLastOccurrenceId(occurrenceId);
+    }
+  }, [allOccurrences, lastOccurrenceId]);
+
   const chartData = Object.values(DEPARTMENTS).map(dept => {
     const log = logs.find(l => l.departmentId === dept.id);
     const totalStaff = settings?.departments?.[dept.id]?.totalStaff || dept.totalStaff;
@@ -595,6 +626,43 @@ function DashboardView() {
     <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 overflow-auto p-10' : 'space-y-10'}`}>
       <NewsTicker occurrences={allOccurrences} />
       
+      {/* Real-time Notification Popup */}
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-lg"
+          >
+            <div className={`bg-white border-l-8 ${
+              showNotification.severity === 'high' ? 'border-red-500' : 
+              showNotification.severity === 'medium' ? 'border-orange-500' : 'border-blue-500'
+            } shadow-2xl rounded-2xl p-6 flex items-start gap-4 mx-4`}>
+              <div className={`p-3 rounded-xl ${
+                showNotification.severity === 'high' ? 'bg-red-50' : 
+                showNotification.severity === 'medium' ? 'bg-orange-50' : 'bg-blue-50'
+              }`}>
+                <BellRing className={
+                  showNotification.severity === 'high' ? 'text-red-600' : 
+                  showNotification.severity === 'medium' ? 'text-orange-600' : 'text-blue-600'
+                } size={32} />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Nova Ocorrência: {showNotification.deptName}</span>
+                  <button onClick={() => setShowNotification(null)} className="text-neutral-400 hover:text-neutral-600">
+                    <X size={20} />
+                  </button>
+                </div>
+                <h4 className="text-xl font-bold text-neutral-900 mb-1">{showNotification.title || 'Sem Título'}</h4>
+                <p className="text-neutral-600 line-clamp-2">{showNotification.description}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-10">
           <header className="flex items-center justify-between">
