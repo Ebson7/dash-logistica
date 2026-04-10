@@ -1,0 +1,5 @@
+{
+  "name": "LogiTrack - Gestão Logística",
+  "description": "Sistema de gestão departamental para logística, incluindo Estoque, Recebimento, Romaneio e Veículos com dashboard centralizado.",
+  "requestFramePermissions": []
+}

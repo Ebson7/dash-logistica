@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and department assignment",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "departmentId": { "type": "string", "enum": ["estoque", "recebimento", "romaneio", "veiculos", "admin"] },
+        "displayName": { "type": "string" }
+      },
+      "required": ["uid", "email", "departmentId"]
+    },
+    "DailyLog": {
+      "title": "DailyLog",
+      "description": "Daily operational logs for a department",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "description": "YYYY-MM-DD" },
+        "departmentId": { "type": "string" },
+        "staffPresent": { "type": "number" },
+        "staffByRole": { "type": "object", "additionalProperties": { "type": "number" } },
+        "occurrences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "timestamp": { "type": "number" },
+              "description": { "type": "string" },
+              "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "vehiclesReceived": { "type": "number" },
+            "vehicleTypes": { "type": "array", "items": { "type": "string" } },
+            "ordersCount": { "type": "number" },
+            "pickersCount": { "type": "number" },
+            "driversCount": { "type": "number" },
+            "registeredVehicles": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["date", "departmentId", "staffPresent"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "departments": { "type": "object" },
+        "vehicles": { 
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "plate": { "type": "string" },
+              "model": { "type": "string" },
+              "type": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/logs/{logId}": {
+      "schema": "DailyLog",
+      "description": "Daily logs for all departments"
+    },
+    "/settings/global": {
+      "schema": "AppSettings",
+      "description": "Global settings"
+    }
+  }
+}
