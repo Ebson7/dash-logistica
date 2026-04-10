@@ -606,7 +606,8 @@ function DashboardView() {
   
   const estoqueLog = logs.find(l => l.departmentId === 'estoque');
   const estoqueCapacity = settings?.departments?.estoque?.inventoryCapacity || 0;
-  const estoqueOccupied = estoqueLog?.data?.occupiedPositions || 0;
+  const estoqueAvailable = estoqueLog?.data?.availablePositions ?? estoqueCapacity;
+  const estoqueOccupied = Math.max(0, estoqueCapacity - estoqueAvailable);
   const estoqueOccupancyPercent = estoqueCapacity > 0 ? Math.round((estoqueOccupied / estoqueCapacity) * 100) : 0;
 
   const allOccurrences = logs.flatMap(log => 
@@ -804,6 +805,9 @@ function DashboardView() {
                 <div className="mt-6 text-center">
                   <p className="text-sm text-neutral-500">
                     <span className="font-bold text-neutral-900">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900">{estoqueCapacity}</span> posições
+                  </p>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    ({estoqueAvailable} disponíveis)
                   </p>
                 </div>
               </div>
@@ -1179,7 +1183,7 @@ function EstoqueView() {
     departmentId="estoque" 
     title="Estoque" 
     fields={[
-      { name: 'occupiedPositions', label: 'Posições Ocupadas Hoje', type: 'number' }
+      { name: 'availablePositions', label: 'Posições Disponíveis Hoje', type: 'number' }
     ]} 
   />;
 }
