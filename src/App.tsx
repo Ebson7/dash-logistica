@@ -1272,6 +1272,7 @@ function SettingsView() {
         setDoc(doc(db, 'settings', 'global'), initialSettings);
         setSettings(initialSettings);
       }
+      // We don't set loading false here yet, we wait for auth settings too
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/global');
     });
@@ -1280,11 +1281,12 @@ function SettingsView() {
       if (docSnap.exists()) {
         setAuthSettings(docSnap.data());
       }
+      setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/auth');
+      setLoading(false);
     });
 
-    setLoading(false);
     return () => {
       unsubGlobal();
       unsubAuth();
@@ -1363,7 +1365,7 @@ function SettingsView() {
   const removeVehicle = async (id: string) => {
     const newSettings = {
       ...settings,
-      vehicles: settings.vehicles.filter((v: any) => v.id !== id)
+      vehicles: (settings.vehicles || []).filter((v: any) => v.id !== id)
     };
     try {
       await setDoc(doc(db, 'settings', 'global'), newSettings);
@@ -1372,7 +1374,12 @@ function SettingsView() {
     }
   };
 
-  if (loading) return <Loader2 className="animate-spin" />;
+  if (loading || !settings || !settings.departments) return (
+    <div className="flex flex-col items-center justify-center p-20 space-y-4">
+      <Loader2 className="animate-spin text-blue-600" size={48} />
+      <p className="text-neutral-500 font-medium">Carregando configurações...</p>
+    </div>
+  );
 
   return (
     <div className="space-y-10 max-w-5xl">
@@ -1423,7 +1430,7 @@ function SettingsView() {
                     <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Total Equipe</label>
                     <input 
                       type="number"
-                      value={settings.departments[dept.id]?.totalStaff || 0}
+                      value={settings.departments?.[dept.id]?.totalStaff || 0}
                       onChange={(e) => updateDeptStaff(dept.id, parseInt(e.target.value))}
                       className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -1432,7 +1439,7 @@ function SettingsView() {
                     <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Cargos (separados por vírgula)</label>
                     <input 
                       type="text"
-                      defaultValue={settings.departments[dept.id]?.roles.join(', ')}
+                      defaultValue={settings.departments?.[dept.id]?.roles?.join(', ') || ''}
                       onBlur={(e) => updateDeptRoles(dept.id, e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -1442,7 +1449,7 @@ function SettingsView() {
                       <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Capacidade Total (Posições)</label>
                       <input 
                         type="number"
-                        value={settings.departments[dept.id]?.inventoryCapacity || 0}
+                        value={settings.departments?.[dept.id]?.inventoryCapacity || 0}
                         onChange={(e) => updateDeptCapacity(dept.id, parseInt(e.target.value))}
                         className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500"
                       />
