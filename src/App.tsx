@@ -31,6 +31,8 @@ import {
   Users,
   Calendar,
   ChevronRight,
+  ChevronLeft,
+  Menu,
   History,
   Lock,
   Monitor,
@@ -319,6 +321,7 @@ function LoginPage() {
 
 function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: any) => void }) {
   const { profile, logout } = useAuth();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
@@ -339,50 +342,70 @@ function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab:
     : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId);
 
   return (
-    <aside className="w-72 bg-white border-r border-neutral-100 flex flex-col h-screen sticky top-0">
-      <div className="p-8">
-        <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-            <Truck className="text-white w-6 h-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight">Marsil Log News</span>
+    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-neutral-100 flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out z-40`}>
+      <div className={`p-6 flex flex-col h-full overflow-hidden`}>
+        <div className="flex items-center justify-between mb-10">
+          {!isCollapsed && (
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                <Truck className="text-white w-6 h-6" />
+              </div>
+              <span className="text-xl font-bold tracking-tight truncate">Marsil Log News</span>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mx-auto shrink-0">
+              <Truck className="text-white w-6 h-6" />
+            </div>
+          )}
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-colors ${isCollapsed ? 'absolute -right-3 top-20 bg-white border border-neutral-100 shadow-sm z-50' : ''}`}
+            title={isCollapsed ? "Expandir" : "Recolher"}
+          >
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={20} />}
+          </button>
         </div>
 
-        <nav className="space-y-2">
+        <nav className="space-y-2 flex-1 overflow-y-auto no-scrollbar">
           {filteredMenu.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              title={isCollapsed ? item.name : ''}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all ${
                 activeTab === item.id 
                   ? 'bg-blue-50 text-blue-600 font-semibold' 
                   : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
               }`}
             >
-              <item.icon size={20} />
-              {item.name}
+              <item.icon size={20} className="shrink-0" />
+              {!isCollapsed && <span className="truncate">{item.name}</span>}
             </button>
           ))}
         </nav>
-      </div>
 
-      <div className="mt-auto p-8 border-t border-neutral-50">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center">
-            <UserIcon size={20} className="text-neutral-500" />
+        <div className="mt-auto pt-6 border-t border-neutral-50">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} mb-6`}>
+            <div className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center shrink-0">
+              <UserIcon size={20} className="text-neutral-500" />
+            </div>
+            {!isCollapsed && (
+              <div className="overflow-hidden">
+                <p className="text-sm font-semibold truncate">{profile?.displayName}</p>
+                <p className="text-xs text-neutral-400 capitalize">{profile?.departmentId}</p>
+              </div>
+            )}
           </div>
-          <div className="overflow-hidden">
-            <p className="text-sm font-semibold truncate">{profile?.displayName}</p>
-            <p className="text-xs text-neutral-400 capitalize">{profile?.departmentId}</p>
-          </div>
+          <button 
+            onClick={logout}
+            title={isCollapsed ? 'Sair' : ''}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 text-red-500 hover:bg-red-50 rounded-xl transition-all font-medium`}
+          >
+            <LogOut size={20} className="shrink-0" />
+            {!isCollapsed && <span>Sair</span>}
+          </button>
         </div>
-        <button 
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition-all font-medium"
-        >
-          <LogOut size={20} />
-          Sair
-        </button>
       </div>
     </aside>
   );
@@ -509,24 +532,24 @@ function OccurrenceList({ occurrences }: { occurrences: any[] }) {
 // --- News Ticker ---
 
 function NewsTicker({ occurrences }: { occurrences: any[] }) {
-  if (occurrences.length === 0) return null;
-
-  const tickerText = occurrences
-    .map(occ => `[${occ.deptName}] ${occ.description} (${occ.severity.toUpperCase()})`)
-    .join(' • ');
+  const tickerText = occurrences.length > 0
+    ? occurrences
+        .map(occ => `[${occ.deptName}] ${occ.description} (${occ.severity.toUpperCase()})`)
+        .join(' • ')
+    : "MARSIL LOG NEWS: OPERAÇÃO NORMAL - SEM OCORRÊNCIAS NO MOMENTO";
 
   return (
-    <div className="bg-neutral-900 text-white py-2 overflow-hidden whitespace-nowrap sticky top-0 z-50 -mx-10 -mt-10 mb-10">
+    <div className="bg-neutral-900 text-yellow-400 py-3 overflow-hidden whitespace-nowrap sticky top-0 z-50 -mx-10 -mt-10 mb-10 shadow-lg border-b border-yellow-400/20">
       <motion.div
-        animate={{ x: [0, -1000] }}
+        animate={{ x: [0, -2000] }}
         transition={{ 
-          duration: 30, 
+          duration: 40, 
           repeat: Infinity, 
           ease: "linear" 
         }}
         className="inline-block pl-[100%]"
       >
-        <span className="text-sm font-mono tracking-wider uppercase">
+        <span className="text-lg font-bold font-mono tracking-wider uppercase">
           {tickerText} • {tickerText}
         </span>
       </motion.div>
@@ -545,13 +568,19 @@ function DashboardView() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const today = new Date().toISOString().split('T')[0];
 
+  // Filter States
+  const [filterDate, setFilterDate] = useState(today);
+  const [filterDept, setFilterDept] = useState<string>('all');
+  const [filterSearch, setFilterSearch] = useState('');
+
   useEffect(() => {
     // Initialize audio
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'logs'), where('date', '==', today));
+    // We fetch all logs for the selected date to build the dashboard and occurrences
+    const q = query(collection(db, 'logs'), where('date', '==', filterDate));
     const unsubLogs = onSnapshot(q, (snapshot) => {
       setLogs(snapshot.docs.map(doc => doc.data()));
     }, (error) => {
@@ -568,10 +597,12 @@ function DashboardView() {
       unsubLogs();
       unsubSettings();
     };
-  }, [today]);
+  }, [filterDate]);
 
   const totalStaffPresent = logs.reduce((sum, log) => sum + (log.staffPresent || 0), 0);
   const totalOccurrences = logs.reduce((sum, log) => sum + (log.occurrences?.length || 0), 0);
+  const totalFolhas = logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.folhas || 0;
+  const totalDrivers = logs.find(l => l.departmentId === 'veiculos')?.data?.driversCount || 0;
   
   const estoqueLog = logs.find(l => l.departmentId === 'estoque');
   const estoqueCapacity = settings?.departments?.estoque?.inventoryCapacity || 0;
@@ -581,9 +612,18 @@ function DashboardView() {
   const allOccurrences = logs.flatMap(log => 
     (log.occurrences || []).map((occ: any) => ({
       ...occ,
+      departmentId: log.departmentId,
       deptName: DEPARTMENTS[log.departmentId as DepartmentId]?.name || log.departmentId
     }))
   ).sort((a, b) => b.timestamp - a.timestamp);
+
+  const filteredOccurrences = allOccurrences.filter(occ => {
+    const matchesDept = filterDept === 'all' || occ.departmentId === filterDept;
+    const matchesSearch = !filterSearch || 
+      occ.title?.toLowerCase().includes(filterSearch.toLowerCase()) || 
+      occ.description?.toLowerCase().includes(filterSearch.toLowerCase());
+    return matchesDept && matchesSearch;
+  });
 
   // Notification Logic
   useEffect(() => {
@@ -681,10 +721,12 @@ function DashboardView() {
             </button>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
-            <StatCard title="Veículos Recebidos" value={logs.find(l => l.departmentId === 'recebimento')?.data?.vehiclesReceived || 0} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
-            <StatCard title="Pedidos Separados" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
+            <StatCard title={`Veículos a Receber (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={logs.find(l => l.departmentId === 'recebimento')?.data?.vehiclesReceived || 0} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
+            <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
+            <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" />
+            <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -772,16 +814,53 @@ function DashboardView() {
         <aside className="w-full lg:w-80 shrink-0">
           <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden sticky top-8">
             <div className="bg-neutral-900 p-6 text-white">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-white/10 rounded-lg">
                   <Newspaper size={20} className="text-blue-400" />
                 </div>
                 <h3 className="text-lg font-bold">Ocorrências</h3>
               </div>
-              <p className="text-neutral-400 text-xs">Últimas notícias da operação</p>
+              
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <input 
+                    type="text"
+                    placeholder="Filtrar por texto..."
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:bg-white/20 transition-all placeholder:text-neutral-500"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <Calendar size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                    <input 
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-lg py-1.5 pl-7 pr-2 text-[10px] outline-none focus:bg-white/20 transition-all"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Filter size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                    <select
+                      value={filterDept}
+                      onChange={(e) => setFilterDept(e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-lg py-1.5 pl-7 pr-2 text-[10px] outline-none focus:bg-white/20 transition-all appearance-none"
+                    >
+                      <option value="all" className="bg-neutral-900">Todos</option>
+                      {Object.values(DEPARTMENTS).map(d => (
+                        <option key={d.id} value={d.id} className="bg-neutral-900">{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
-              <OccurrenceList occurrences={allOccurrences} />
+            <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar">
+              <OccurrenceList occurrences={filteredOccurrences} />
             </div>
           </div>
         </aside>
@@ -1111,6 +1190,7 @@ function RomaneioTardeView() {
     title="Romaneio Tarde" 
     fields={[
       { name: 'ordersCount', label: 'Total de Pedidos', type: 'number' },
+      { name: 'folhas', label: 'Total de Folhas', type: 'number' },
       { name: 'pickersCount', label: 'Separadores Trabalhando', type: 'number' }
     ]} 
   />;
