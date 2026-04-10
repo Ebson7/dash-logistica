@@ -25,7 +25,19 @@ import {
   Loader2,
   Settings as SettingsIcon,
   Search,
-  Filter
+  Filter,
+  AlertCircle,
+  Plus,
+  Users,
+  Calendar,
+  ChevronRight,
+  History,
+  Lock,
+  Monitor,
+  Maximize,
+  Newspaper,
+  ArrowRight,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -256,7 +268,7 @@ function LoginPage() {
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Truck className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">LogiTrack</h1>
+          <h1 className="text-3xl font-bold text-neutral-900 mb-2">Marsil Log News</h1>
           <p className="text-neutral-500">Gestão Logística Inteligente</p>
         </div>
 
@@ -331,7 +343,7 @@ function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab:
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
             <Truck className="text-white w-6 h-6" />
           </div>
-          <span className="text-xl font-bold tracking-tight">LogiTrack</span>
+          <span className="text-xl font-bold tracking-tight">Marsil Log News</span>
         </div>
 
         <nav className="space-y-2">
@@ -438,17 +450,6 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { 
-  AlertCircle, 
-  Plus, 
-  Users, 
-  Calendar,
-  ChevronRight,
-  History,
-  Lock,
-  Monitor,
-  Maximize
-} from 'lucide-react';
 
 // --- Shared Components ---
 
@@ -468,22 +469,34 @@ function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue
 
 function OccurrenceList({ occurrences }: { occurrences: any[] }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {occurrences.length === 0 ? (
         <p className="text-neutral-400 text-sm italic">Nenhuma ocorrência registrada.</p>
       ) : (
         occurrences.map((occ, idx) => (
-          <div key={idx} className="flex items-start gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-            <AlertCircle className={`shrink-0 mt-0.5 ${
-              occ.severity === 'high' ? 'text-red-500' : 
-              occ.severity === 'medium' ? 'text-orange-500' : 'text-blue-500'
-            }`} size={16} />
-            <div>
-              <p className="text-sm text-neutral-800">{occ.description}</p>
-              <p className="text-[10px] text-neutral-400 uppercase font-bold mt-1">
-                {new Date(occ.timestamp).toLocaleTimeString()}
-              </p>
+          <div key={idx} className="group p-4 bg-white rounded-2xl border border-neutral-100 hover:border-blue-200 transition-all shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                occ.severity === 'high' ? 'bg-red-100 text-red-600' : 
+                occ.severity === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
+              }`}>
+                {occ.severity === 'high' ? 'Crítica' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+              </span>
+              <span className="text-[10px] text-neutral-400 flex items-center gap-1">
+                <Clock size={10} />
+                {new Date(occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
+            <h4 className="font-bold text-neutral-900 text-sm mb-1 leading-tight group-hover:text-blue-600 transition-colors">
+              {occ.title || 'Sem Título'}
+            </h4>
+            <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{occ.description}</p>
+            {occ.deptName && (
+              <div className="mt-3 pt-3 border-t border-neutral-50 flex items-center justify-between">
+                <span className="text-[10px] font-medium text-neutral-400">{occ.deptName}</span>
+                <ArrowRight size={12} className="text-neutral-300 group-hover:text-blue-400 transition-colors" />
+              </div>
+            )}
           </div>
         ))
       )}
@@ -579,73 +592,113 @@ function DashboardView() {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
-    <div className={`space-y-10 ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 overflow-auto p-10' : ''}`}>
+    <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 overflow-auto p-10' : 'space-y-10'}`}>
       <NewsTicker occurrences={allOccurrences} />
       
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-neutral-900">Dashboard Geral</h2>
-          <p className="text-neutral-500 mt-1">Visão em tempo real de todos os departamentos</p>
-        </div>
-        <button 
-          onClick={() => setIsTVMode(!isTVMode)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
-            isTVMode ? 'bg-blue-600 text-white' : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50'
-          }`}
-        >
-          {isTVMode ? <Monitor size={20} /> : <Maximize size={20} />}
-          {isTVMode ? 'Sair do Modo TV' : 'Modo TV'}
-        </button>
-      </header>
+      <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex-1 space-y-10">
+          <header className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-neutral-900">Dashboard Geral</h2>
+              <p className="text-neutral-500 mt-1">Visão em tempo real de todos os departamentos</p>
+            </div>
+            <button 
+              onClick={() => setIsTVMode(!isTVMode)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
+                isTVMode ? 'bg-blue-600 text-white' : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50'
+              }`}
+            >
+              {isTVMode ? <Monitor size={20} /> : <Maximize size={20} />}
+              {isTVMode ? 'Sair do Modo TV' : 'Modo TV'}
+            </button>
+          </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
-        <StatCard title="Ocorrências Hoje" value={totalOccurrences} icon={AlertCircle} colorClass="bg-red-50 text-red-600" />
-        <StatCard title="Veículos Recebidos" value={logs.find(l => l.departmentId === 'recebimento')?.data?.vehiclesReceived || 0} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
-        <StatCard title="Pedidos Separados" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
-        <StatCard title="Ocupação Estoque" value={`${estoqueOccupancyPercent}%`} icon={Package} colorClass="bg-purple-50 text-purple-600" />
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
+            <StatCard title="Veículos Recebidos" value={logs.find(l => l.departmentId === 'recebimento')?.data?.vehiclesReceived || 0} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
+            <StatCard title="Pedidos Separados" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-          <h3 className="text-lg font-bold mb-6">Comparecimento (%)</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} unit="%" />
-                <Tooltip 
-                  cursor={{fill: '#f9fafb'}}
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
-                />
-                <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.percent < 70 ? '#ef4444' : entry.percent < 90 ? '#f59e0b' : '#10b981'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
+              <h3 className="text-lg font-bold mb-6">Comparecimento (%)</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} unit="%" />
+                    <Tooltip 
+                      cursor={{fill: '#f9fafb'}}
+                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                    />
+                    <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.percent < 70 ? '#ef4444' : entry.percent < 90 ? '#f59e0b' : '#10b981'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
+              <h3 className="text-lg font-bold mb-6">Ocupação Estoque</h3>
+              <div className="flex flex-col items-center justify-center h-80">
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r="88"
+                      stroke="currentColor"
+                      strokeWidth="16"
+                      fill="transparent"
+                      className="text-neutral-100"
+                    />
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r="88"
+                      stroke="currentColor"
+                      strokeWidth="16"
+                      fill="transparent"
+                      strokeDasharray={552.92}
+                      strokeDashoffset={552.92 - (552.92 * estoqueOccupancyPercent) / 100}
+                      className={`${estoqueOccupancyPercent > 90 ? 'text-red-500' : estoqueOccupancyPercent > 70 ? 'text-orange-500' : 'text-blue-500'} transition-all duration-1000`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold text-neutral-900">{estoqueOccupancyPercent}%</span>
+                    <span className="text-xs text-neutral-400 font-bold uppercase">Ocupado</span>
+                  </div>
+                </div>
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-neutral-500">
+                    <span className="font-bold text-neutral-900">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900">{estoqueCapacity}</span> posições
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-          <h3 className="text-lg font-bold mb-6">Presença por Departamento</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                <Tooltip 
-                  cursor={{fill: '#f9fafb'}}
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
-                />
-                <Bar dataKey="presente" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+        <aside className="w-full lg:w-80 shrink-0">
+          <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden sticky top-8">
+            <div className="bg-neutral-900 p-6 text-white">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-white/10 rounded-lg">
+                  <Newspaper size={20} className="text-blue-400" />
+                </div>
+                <h3 className="text-lg font-bold">Ocorrências</h3>
+              </div>
+              <p className="text-neutral-400 text-xs">Últimas notícias da operação</p>
+            </div>
+            <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+              <OccurrenceList occurrences={allOccurrences} />
+            </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
@@ -658,6 +711,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
   const [settings, setSettings] = useState<any>(null);
   const [staffPresent, setStaffPresent] = useState(0);
   const [staffByRole, setStaffByRole] = useState<Record<string, number>>({});
+  const [occurrenceTitle, setOccurrenceTitle] = useState('');
   const [occurrence, setOccurrence] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('low');
   const [extraData, setExtraData] = useState<any>({});
@@ -725,11 +779,12 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
   };
 
   const addOccurrence = async () => {
-    if (!occurrence) return;
+    if (!occurrenceTitle || !occurrence) return;
     const existingLog = logs.find(l => l.date === today);
     const newOcc = {
       id: Math.random().toString(36).substr(2, 9),
       timestamp: Date.now(),
+      title: occurrenceTitle,
       description: occurrence,
       severity
     };
@@ -738,6 +793,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
       try {
         const updatedOccurrences = [...(existingLog.occurrences || []), newOcc];
         await setDoc(doc(db, 'logs', existingLog.id), { occurrences: updatedOccurrences }, { merge: true });
+        setOccurrenceTitle('');
         setOccurrence('');
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, `logs/${existingLog.id}/occurrences`);
@@ -877,8 +933,15 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
               Registrar Ocorrência
             </h3>
             <div className="space-y-4">
+              <input 
+                type="text"
+                placeholder="Título da ocorrência (ex: Atraso de Veículo)"
+                value={occurrenceTitle}
+                onChange={(e) => setOccurrenceTitle(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
+              />
               <textarea 
-                placeholder="Descreva o ocorrido..."
+                placeholder="Descreva os detalhes..."
                 value={occurrence}
                 onChange={(e) => setOccurrence(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
@@ -895,7 +958,8 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                 </select>
                 <button 
                   onClick={addOccurrence}
-                  className="flex-1 bg-neutral-900 text-white py-2 rounded-xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
+                  disabled={!occurrenceTitle || !occurrence}
+                  className="flex-1 bg-neutral-900 text-white py-2 rounded-xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Plus size={18} />
                   Adicionar

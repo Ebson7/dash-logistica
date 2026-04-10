@@ -11,6 +11,7 @@ export interface Department {
 export interface Occurrence {
   id: string;
   timestamp: number;
+  title: string;
   description: string;
   severity: 'low' | 'medium' | 'high';
 }
