@@ -619,6 +619,24 @@ function DashboardView() {
             <StatCard title="Pedidos Separados" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {chartData.map((dept, idx) => (
+              <div key={idx} className="bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm flex flex-col items-center text-center">
+                <span className="text-[10px] font-bold text-neutral-400 uppercase mb-1">{dept.name}</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold text-neutral-900">{dept.presente}</span>
+                  <span className="text-xs text-neutral-400 font-medium">/ {dept.total}</span>
+                </div>
+                <div className="w-full bg-neutral-100 h-1.5 rounded-full mt-3 overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-500 ${dept.percent < 70 ? 'bg-red-500' : dept.percent < 90 ? 'bg-orange-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${dept.percent}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
               <h3 className="text-lg font-bold mb-6">Comparecimento (%)</h3>
