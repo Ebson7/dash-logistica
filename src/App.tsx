@@ -41,7 +41,8 @@ import {
   ArrowRight,
   Clock,
   BellRing,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -385,8 +386,24 @@ function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab:
           ))}
         </nav>
 
-        <div className="mt-auto pt-6 border-t border-neutral-50">
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} mb-6`}>
+        <div className="mt-auto pt-6 border-t border-neutral-50 space-y-4">
+          <a 
+            href="https://romaneiomarsil.lovable.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={isCollapsed ? 'Acessar Romaneio' : ''}
+            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 bg-blue-50 text-blue-600 rounded-xl transition-all hover:bg-blue-100 group`}
+          >
+            <ExternalLink size={20} className="shrink-0" />
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                <span className="text-sm font-bold">Acessar Romaneio</span>
+                <span className="text-[10px] text-blue-400 font-medium leading-tight">acessar após ás 13:30 em dias de semana</span>
+              </div>
+            )}
+          </a>
+
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center shrink-0">
               <UserIcon size={20} className="text-neutral-500" />
             </div>
@@ -531,7 +548,7 @@ function OccurrenceList({ occurrences }: { occurrences: any[] }) {
 
 // --- News Ticker ---
 
-function NewsTicker({ occurrences }: { occurrences: any[] }) {
+function NewsTicker({ occurrences, isTVMode }: { occurrences: any[], isTVMode?: boolean }) {
   const tickerText = occurrences.length > 0
     ? occurrences
         .map(occ => `[${occ.deptName}] ${occ.description} (${occ.severity.toUpperCase()})`)
@@ -539,18 +556,20 @@ function NewsTicker({ occurrences }: { occurrences: any[] }) {
     : "MARSIL LOG NEWS: OPERAÇÃO NORMAL - SEM OCORRÊNCIAS NO MOMENTO";
 
   return (
-    <div className="bg-neutral-900 text-yellow-400 py-3 overflow-hidden whitespace-nowrap sticky top-0 z-50 -mx-10 -mt-10 mb-10 shadow-lg border-b border-yellow-400/20">
+    <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap sticky top-0 z-50 shadow-lg border-b border-yellow-400/20 ${
+      isTVMode ? 'py-6 w-full' : 'py-3 -mx-10 -mt-10 mb-10'
+    }`}>
       <motion.div
-        animate={{ x: [0, -2000] }}
+        animate={{ x: ["0%", "-100%"] }}
         transition={{ 
-          duration: 40, 
+          duration: 180 + (tickerText.length / 2), 
           repeat: Infinity, 
           ease: "linear" 
         }}
         className="inline-block pl-[100%]"
       >
-        <span className="text-lg font-bold font-mono tracking-wider uppercase">
-          {tickerText} • {tickerText}
+        <span className={`${isTVMode ? 'text-3xl' : 'text-lg'} font-bold font-mono tracking-wider uppercase`}>
+          {tickerText} • {tickerText} • {tickerText}
         </span>
       </motion.div>
     </div>
@@ -603,6 +622,11 @@ function DashboardView() {
   const totalOccurrences = logs.reduce((sum, log) => sum + (log.occurrences?.length || 0), 0);
   const totalFolhas = logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.folhas || 0;
   const totalDrivers = logs.find(l => l.departmentId === 'veiculos')?.data?.driversCount || 0;
+  
+  const recebimentoLog = logs.find(l => l.departmentId === 'recebimento');
+  const vehiclesReceived = recebimentoLog?.data?.vehiclesReceived || 0;
+  const totalVehiclesExpected = recebimentoLog?.data?.totalVehicles || 0;
+  const vehicleStats = totalVehiclesExpected > 0 ? `${vehiclesReceived}/${totalVehiclesExpected}` : vehiclesReceived;
   
   const estoqueLog = logs.find(l => l.departmentId === 'estoque');
   const estoqueCapacity = settings?.departments?.estoque?.inventoryCapacity || 0;
@@ -664,47 +688,47 @@ function DashboardView() {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
-    <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 overflow-auto p-10' : 'space-y-10'}`}>
-      <NewsTicker occurrences={allOccurrences} />
+    <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 overflow-auto' : 'space-y-10'}`}>
+      <NewsTicker occurrences={allOccurrences} isTVMode={isTVMode} />
       
-      {/* Real-time Notification Popup */}
-      <AnimatePresence>
-        {showNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-lg"
-          >
-            <div className={`bg-white border-l-8 ${
-              showNotification.severity === 'high' ? 'border-red-500' : 
-              showNotification.severity === 'medium' ? 'border-orange-500' : 'border-blue-500'
-            } shadow-2xl rounded-2xl p-6 flex items-start gap-4 mx-4`}>
-              <div className={`p-3 rounded-xl ${
-                showNotification.severity === 'high' ? 'bg-red-50' : 
-                showNotification.severity === 'medium' ? 'bg-orange-50' : 'bg-blue-50'
-              }`}>
-                <BellRing className={
-                  showNotification.severity === 'high' ? 'text-red-600' : 
-                  showNotification.severity === 'medium' ? 'text-orange-600' : 'text-blue-600'
-                } size={32} />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Nova Ocorrência: {showNotification.deptName}</span>
-                  <button onClick={() => setShowNotification(null)} className="text-neutral-400 hover:text-neutral-600">
-                    <X size={20} />
-                  </button>
+      <div className={isTVMode ? 'p-10' : ''}>
+        <AnimatePresence>
+          {showNotification && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-lg"
+            >
+              <div className={`bg-white border-l-8 ${
+                showNotification.severity === 'high' ? 'border-red-500' : 
+                showNotification.severity === 'medium' ? 'border-orange-500' : 'border-blue-500'
+              } shadow-2xl rounded-2xl p-6 flex items-start gap-4 mx-4`}>
+                <div className={`p-3 rounded-xl ${
+                  showNotification.severity === 'high' ? 'bg-red-50' : 
+                  showNotification.severity === 'medium' ? 'bg-orange-50' : 'bg-blue-50'
+                }`}>
+                  <BellRing className={
+                    showNotification.severity === 'high' ? 'text-red-600' : 
+                    showNotification.severity === 'medium' ? 'text-orange-600' : 'text-blue-600'
+                  } size={32} />
                 </div>
-                <h4 className="text-xl font-bold text-neutral-900 mb-1">{showNotification.title || 'Sem Título'}</h4>
-                <p className="text-neutral-600 line-clamp-2">{showNotification.description}</p>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Nova Ocorrência: {showNotification.deptName}</span>
+                    <button onClick={() => setShowNotification(null)} className="text-neutral-400 hover:text-neutral-600">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <h4 className="text-xl font-bold text-neutral-900 mb-1">{showNotification.title || 'Sem Título'}</h4>
+                  <p className="text-neutral-600 line-clamp-2">{showNotification.description}</p>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-10">
           <header className="flex items-center justify-between">
             <div>
@@ -724,7 +748,7 @@ function DashboardView() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
-            <StatCard title={`Veículos a Receber (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={logs.find(l => l.departmentId === 'recebimento')?.data?.vehiclesReceived || 0} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
+            <StatCard title={`Veículos Recebidos (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
             <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
             <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" />
             <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" />
@@ -870,6 +894,7 @@ function DashboardView() {
         </aside>
       </div>
     </div>
+  </div>
   );
 }
 
@@ -1172,7 +1197,8 @@ function RecebimentoView() {
     departmentId="recebimento" 
     title="Recebimento" 
     fields={[
-      { name: 'vehiclesReceived', label: 'Total de Veículos Recebidos', type: 'number' },
+      { name: 'totalVehicles', label: 'Total de Veículos Previstos', type: 'number' },
+      { name: 'vehiclesReceived', label: 'Veículos Recebidos até o momento', type: 'number' },
       { name: 'vehiclesByType', label: 'Quantidade por Tipo de Veículo', type: 'counter-list', options: VEHICLE_TYPES }
     ]} 
   />;
