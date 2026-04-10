@@ -320,7 +320,7 @@ function LoginPage() {
   );
 }
 
-function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: any) => void }) {
+function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: string, setActiveTab: (t: any) => void, isOpen?: boolean, onClose?: () => void }) {
   const { profile, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   
@@ -343,48 +343,75 @@ function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab:
     : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId);
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-neutral-100 flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out z-40`}>
-      <div className={`p-6 flex flex-col h-full overflow-hidden`}>
-        <div className="flex items-center justify-between mb-10">
-          {!isCollapsed && (
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+    <>
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside className={`
+        ${isCollapsed ? 'w-20' : 'w-72'} 
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        bg-white border-r border-neutral-100 flex flex-col h-screen fixed lg:sticky top-0 transition-all duration-300 ease-in-out z-50
+      `}>
+        <div className={`p-6 flex flex-col h-full overflow-hidden`}>
+          <div className="flex items-center justify-between mb-10">
+            {!isCollapsed && (
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                  <Truck className="text-white w-6 h-6" />
+                </div>
+                <span className="text-xl font-bold tracking-tight truncate">Marsil Log News</span>
+              </div>
+            )}
+            {isCollapsed && (
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mx-auto shrink-0">
                 <Truck className="text-white w-6 h-6" />
               </div>
-              <span className="text-xl font-bold tracking-tight truncate">Marsil Log News</span>
-            </div>
-          )}
-          {isCollapsed && (
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mx-auto shrink-0">
-              <Truck className="text-white w-6 h-6" />
-            </div>
-          )}
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-colors ${isCollapsed ? 'absolute -right-3 top-20 bg-white border border-neutral-100 shadow-sm z-50' : ''}`}
-            title={isCollapsed ? "Expandir" : "Recolher"}
-          >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={20} />}
-          </button>
-        </div>
-
-        <nav className="space-y-2 flex-1 overflow-y-auto no-scrollbar">
-          {filteredMenu.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              title={isCollapsed ? item.name : ''}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all ${
-                activeTab === item.id 
-                  ? 'bg-blue-50 text-blue-600 font-semibold' 
-                  : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
-              }`}
+            )}
+            <button 
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className={`hidden lg:block p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-colors ${isCollapsed ? 'absolute -right-3 top-20 bg-white border border-neutral-100 shadow-sm z-50' : ''}`}
+              title={isCollapsed ? "Expandir" : "Recolher"}
             >
-              <item.icon size={20} className="shrink-0" />
-              {!isCollapsed && <span className="truncate">{item.name}</span>}
+              {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={20} />}
             </button>
-          ))}
-        </nav>
+            <button 
+              onClick={onClose}
+              className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg text-neutral-400"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <nav className="space-y-2 flex-1 overflow-y-auto no-scrollbar">
+            {filteredMenu.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (onClose) onClose();
+                }}
+                title={isCollapsed ? item.name : ''}
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all ${
+                  activeTab === item.id 
+                    ? 'bg-blue-50 text-blue-600 font-semibold' 
+                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
+                }`}
+              >
+                <item.icon size={20} className="shrink-0" />
+                {!isCollapsed && <span className="truncate">{item.name}</span>}
+              </button>
+            ))}
+          </nav>
 
         <div className="mt-auto pt-6 border-t border-neutral-50 space-y-4">
           <a 
@@ -425,6 +452,7 @@ function Sidebar({ activeTab, setActiveTab }: { activeTab: string, setActiveTab:
         </div>
       </div>
     </aside>
+    </>
   );
 }
 
@@ -442,6 +470,7 @@ export default function App() {
 
 function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: any) => void }) {
   const { user, profile, loading } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (loading) {
     return (
@@ -455,27 +484,51 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
 
   return (
     <div className="flex min-h-screen bg-neutral-50">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main className="flex-1 p-10 overflow-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        isOpen={isMobileMenuOpen} 
+        onClose={() => setIsMobileMenuOpen(false)} 
+      />
+      
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile Header */}
+        <header className="lg:hidden bg-white border-b border-neutral-100 p-4 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Truck className="text-white w-5 h-5" />
+            </div>
+            <span className="font-bold text-lg">Marsil Log</span>
+          </div>
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 hover:bg-neutral-50 rounded-lg text-neutral-600"
           >
-            {activeTab === 'dashboard' && <DashboardView />}
-            {activeTab === 'recebimento' && <RecebimentoView />}
-            {activeTab === 'estoque' && <EstoqueView />}
-            {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
-            {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
-            {activeTab === 'exp_loja' && <ExpLojaView />}
-            {activeTab === 'veiculos' && <VeiculosView />}
-            {activeTab === 'settings' && <SettingsView />}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+            <Menu size={24} />
+          </button>
+        </header>
+
+        <main className="flex-1 p-4 md:p-10 overflow-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'dashboard' && <DashboardView />}
+              {activeTab === 'recebimento' && <RecebimentoView />}
+              {activeTab === 'estoque' && <EstoqueView />}
+              {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
+              {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
+              {activeTab === 'exp_loja' && <ExpLojaView />}
+              {activeTab === 'veiculos' && <VeiculosView />}
+              {activeTab === 'settings' && <SettingsView />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }
@@ -497,13 +550,13 @@ import {
 
 function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue-600" }: any) {
   return (
-    <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 flex items-center gap-5">
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${colorClass}`}>
-        <Icon size={28} />
+    <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-neutral-100 flex items-center gap-4 md:gap-5">
+      <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 ${colorClass}`}>
+        <Icon className="w-6 h-6 md:w-7 md:h-7" />
       </div>
-      <div>
-        <p className="text-neutral-500 text-sm font-medium">{title}</p>
-        <p className="text-2xl font-bold text-neutral-900">{value}</p>
+      <div className="min-w-0">
+        <p className="text-neutral-500 text-xs md:text-sm font-medium truncate">{title}</p>
+        <p className="text-xl md:text-2xl font-bold text-neutral-900 truncate">{value}</p>
       </div>
     </div>
   );
@@ -557,7 +610,7 @@ function NewsTicker({ occurrences, isTVMode }: { occurrences: any[], isTVMode?: 
 
   return (
     <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap sticky top-0 z-50 shadow-lg border-b border-yellow-400/20 ${
-      isTVMode ? 'py-6 w-full' : 'py-3 -mx-10 -mt-10 mb-10'
+      isTVMode ? 'py-6 w-full' : 'py-3 -mx-4 md:-mx-10 -mt-4 md:-mt-10 mb-6 md:mb-10'
     }`}>
       <motion.div
         animate={{ x: ["0%", "-100%"] }}
@@ -730,10 +783,10 @@ function DashboardView() {
 
         <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-10">
-          <header className="flex items-center justify-between">
+          <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-neutral-900">Dashboard Geral</h2>
-              <p className="text-neutral-500 mt-1">Visão em tempo real de todos os departamentos</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">Dashboard Geral</h2>
+              <p className="text-neutral-500 mt-1 text-sm md:text-base">Visão em tempo real de todos os departamentos</p>
             </div>
             <button 
               onClick={() => setIsTVMode(!isTVMode)}
@@ -999,10 +1052,10 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
 
   return (
     <div className="max-w-4xl space-y-8">
-      <header className="flex justify-between items-end">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-neutral-900">{title}</h2>
-          <p className="text-neutral-500 mt-1">Gestão diária do departamento</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">{title}</h2>
+          <p className="text-neutral-500 mt-1 text-sm md:text-base">Gestão diária do departamento</p>
         </div>
         <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2">
           <Calendar size={16} />
