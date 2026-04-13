@@ -874,13 +874,12 @@ function DashboardView() {
             </button>
           </header>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
             <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
             <StatCard title={`Veículos Recebidos (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
             <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
             <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" />
             <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" />
-            <StatCard title="Palets no Chão" value={paletsNoChao} icon={Package} colorClass="bg-amber-50 text-amber-600" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -924,8 +923,17 @@ function DashboardView() {
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-              <h3 className="text-lg font-bold mb-6">Ocupação Estoque</h3>
+            <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-lg font-bold dark:text-white">Ocupação Estoque</h3>
+                <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+                  <Package className="text-amber-600 dark:text-amber-400 w-5 h-5" />
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase leading-none">Palets no Chão</p>
+                    <p className="text-xl font-black text-amber-700 dark:text-amber-300 mt-1 leading-none">{paletsNoChao}</p>
+                  </div>
+                </div>
+              </div>
               <div className="flex flex-col items-center justify-center h-80">
                 <div className="relative w-48 h-48">
                   <svg className="w-full h-full transform -rotate-90">
@@ -936,7 +944,7 @@ function DashboardView() {
                       stroke="currentColor"
                       strokeWidth="16"
                       fill="transparent"
-                      className="text-neutral-100"
+                      className="text-neutral-100 dark:text-neutral-800"
                     />
                     <circle
                       cx="96"
@@ -951,15 +959,15 @@ function DashboardView() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-neutral-900">{estoqueOccupancyPercent}%</span>
-                    <span className="text-xs text-neutral-400 font-bold uppercase">Ocupado</span>
+                    <span className="text-4xl font-bold text-neutral-900 dark:text-white">{estoqueOccupancyPercent}%</span>
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 font-bold uppercase">Ocupado</span>
                   </div>
                 </div>
                 <div className="mt-6 text-center">
-                  <p className="text-sm text-neutral-500">
-                    <span className="font-bold text-neutral-900">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900">{estoqueCapacity}</span> posições
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    <span className="font-bold text-neutral-900 dark:text-neutral-200">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900 dark:text-neutral-200">{estoqueCapacity}</span> posições
                   </p>
-                  <p className="text-xs text-neutral-400 mt-1">
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                     ({estoqueAvailable} disponíveis)
                   </p>
                 </div>
