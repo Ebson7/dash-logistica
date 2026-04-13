@@ -32,6 +32,8 @@ import {
   Calendar,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Menu,
   History,
   Lock,
@@ -42,7 +44,9 @@ import {
   Clock,
   BellRing,
   X,
-  ExternalLink
+  ExternalLink,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -149,6 +153,45 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
     return this.props.children;
   }
+}
+
+// --- Dark Mode Context ---
+interface ThemeContextType {
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | null>(null);
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) throw new Error('useTheme must be used within ThemeProvider');
+  return context;
+};
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+
+  return (
+    <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 // --- Auth Context ---
@@ -263,27 +306,27 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center p-4 transition-colors duration-300">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-8 rounded-3xl shadow-xl shadow-neutral-200 w-full max-w-md"
+        className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-xl shadow-neutral-200 dark:shadow-none w-full max-w-md border border-transparent dark:border-neutral-800"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200 dark:shadow-none">
             <Truck className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">Marsil Log News</h1>
-          <p className="text-neutral-500">Gestão Logística Inteligente</p>
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">Marsil Log News</h1>
+          <p className="text-neutral-500 dark:text-neutral-400">Gestão Logística Inteligente</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-2">Acessar como</label>
+            <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-2">Acessar como</label>
             <select 
               value={dept}
               onChange={(e: any) => setDept(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
               <option value="admin">Administrador</option>
               {Object.values(DEPARTMENTS).map(d => (
@@ -293,13 +336,13 @@ function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-neutral-400 uppercase mb-2">Senha</label>
+            <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-2">Senha</label>
             <input 
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Digite a senha"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             />
           </div>
 
@@ -322,6 +365,7 @@ function LoginPage() {
 
 function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: string, setActiveTab: (t: any) => void, isOpen?: boolean, onClose?: () => void }) {
   const { profile, logout } = useAuth();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   const menuItems = [
@@ -360,7 +404,7 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
       <aside className={`
         ${isCollapsed ? 'w-20' : 'w-72'} 
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        bg-white border-r border-neutral-100 flex flex-col h-screen fixed lg:sticky top-0 transition-all duration-300 ease-in-out z-50
+        bg-white dark:bg-neutral-900 border-r border-neutral-100 dark:border-neutral-800 flex flex-col h-screen fixed lg:sticky top-0 transition-all duration-300 ease-in-out z-50
       `}>
         <div className={`p-6 flex flex-col h-full overflow-hidden`}>
           <div className="flex items-center justify-between mb-10">
@@ -369,7 +413,7 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
                 <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
                   <Truck className="text-white w-6 h-6" />
                 </div>
-                <span className="text-xl font-bold tracking-tight truncate">Marsil Log News</span>
+                <span className="text-xl font-bold tracking-tight truncate dark:text-white">Marsil Log News</span>
               </div>
             )}
             {isCollapsed && (
@@ -379,14 +423,14 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
             )}
             <button 
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`hidden lg:block p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 transition-colors ${isCollapsed ? 'absolute -right-3 top-20 bg-white border border-neutral-100 shadow-sm z-50' : ''}`}
+              className={`hidden lg:block p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 transition-colors ${isCollapsed ? 'absolute -right-3 top-20 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm z-50' : ''}`}
               title={isCollapsed ? "Expandir" : "Recolher"}
             >
               {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={20} />}
             </button>
             <button 
               onClick={onClose}
-              className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg text-neutral-400"
+              className="lg:hidden p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400"
             >
               <X size={20} />
             </button>
@@ -403,8 +447,8 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
                 title={isCollapsed ? item.name : ''}
                 className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all ${
                   activeTab === item.id 
-                    ? 'bg-blue-50 text-blue-600 font-semibold' 
-                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold' 
+                    : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
                 }`}
               >
                 <item.icon size={20} className="shrink-0" />
@@ -413,31 +457,40 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
             ))}
           </nav>
 
-        <div className="mt-auto pt-6 border-t border-neutral-50 space-y-4">
+        <div className="mt-auto pt-6 border-t border-neutral-50 dark:border-neutral-800 space-y-4">
+          <button
+            onClick={toggleDarkMode}
+            title={isCollapsed ? (isDarkMode ? 'Modo Claro' : 'Modo Escuro') : ''}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-all font-medium`}
+          >
+            {isDarkMode ? <Sun size={20} className="shrink-0" /> : <Moon size={20} className="shrink-0" />}
+            {!isCollapsed && <span>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>}
+          </button>
+
           <a 
             href="https://romaneiomarsil.lovable.app/"
             target="_blank"
             rel="noopener noreferrer"
             title={isCollapsed ? 'Acessar Romaneio' : ''}
-            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 bg-blue-50 text-blue-600 rounded-xl transition-all hover:bg-blue-100 group`}
+            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl transition-all hover:bg-blue-100 dark:hover:bg-blue-900/30 group`}
           >
             <ExternalLink size={20} className="shrink-0" />
             {!isCollapsed && (
               <div className="flex flex-col">
                 <span className="text-sm font-bold">Acessar Romaneio</span>
-                <span className="text-[10px] text-blue-400 font-medium leading-tight">acessar após ás 13:30 em dias de semana</span>
+                <span className="text-[10px] text-blue-400 dark:text-blue-500 font-medium leading-tight">acessar após ás 13:30 em dias de semana</span>
               </div>
             )}
           </a>
 
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center shrink-0">
-              <UserIcon size={20} className="text-neutral-500" />
+            <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center shrink-0">
+              <UserIcon size={20} className="text-neutral-500 dark:text-neutral-400" />
             </div>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <p className="text-sm font-semibold truncate">{profile?.displayName}</p>
-                <p className="text-xs text-neutral-400 capitalize">{profile?.departmentId}</p>
+                <p className="text-sm font-semibold truncate dark:text-white">{profile?.displayName}</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 capitalize">{profile?.departmentId}</p>
               </div>
             )}
           </div>
@@ -461,9 +514,11 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AuthContent activeTab={activeTab} setActiveTab={setActiveTab} />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthContent activeTab={activeTab} setActiveTab={setActiveTab} />
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
@@ -483,7 +538,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
   if (!user || !profile) return <LoginPage />;
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
+    <div className="flex min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors duration-300">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -493,16 +548,16 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
       
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile Header */}
-        <header className="lg:hidden bg-white border-b border-neutral-100 p-4 flex items-center justify-between sticky top-0 z-30">
+        <header className="lg:hidden bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 p-4 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Truck className="text-white w-5 h-5" />
             </div>
-            <span className="font-bold text-lg">Marsil Log</span>
+            <span className="font-bold text-lg dark:text-white">Marsil Log</span>
           </div>
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 hover:bg-neutral-50 rounded-lg text-neutral-600"
+            className="p-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg text-neutral-600 dark:text-neutral-400"
           >
             <Menu size={24} />
           </button>
@@ -550,14 +605,56 @@ import {
 
 function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue-600" }: any) {
   return (
-    <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-neutral-100 flex items-center gap-4 md:gap-5">
-      <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 ${colorClass}`}>
-        <Icon className="w-6 h-6 md:w-7 md:h-7" />
+    <div className="bg-white dark:bg-neutral-900 p-4 md:p-6 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 flex justify-between items-center gap-4 min-w-0">
+      <div className="flex flex-col gap-3 min-w-0">
+        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 ${colorClass} dark:bg-opacity-10`}>
+          <Icon className="w-5 h-5 md:w-6 md:h-6" />
+        </div>
+        <p className="text-neutral-500 dark:text-neutral-400 text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight break-words">{title}</p>
       </div>
-      <div className="min-w-0">
-        <p className="text-neutral-500 text-xs md:text-sm font-medium truncate">{title}</p>
-        <p className="text-xl md:text-2xl font-bold text-neutral-900 truncate">{value}</p>
+      <div className="text-right shrink-0">
+        <p className="text-2xl md:text-4xl font-black text-neutral-900 dark:text-white">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function OccurrenceCard({ occ }: { occ: any }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div 
+      onClick={() => setIsExpanded(!isExpanded)}
+      className="group p-4 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-900 transition-all shadow-sm cursor-pointer"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+          occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 
+          occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 
+          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+        }`}>
+          {occ.severity === 'high' ? 'Crítica' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+            <Clock size={10} />
+            {new Date(occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {isExpanded ? <ChevronUp size={14} className="text-neutral-300" /> : <ChevronDown size={14} className="text-neutral-300" />}
+        </div>
+      </div>
+      <h4 className="font-bold text-neutral-900 dark:text-neutral-100 text-sm mb-1 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        {occ.title || 'Sem Título'}
+      </h4>
+      <p className={`text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed transition-all ${isExpanded ? '' : 'line-clamp-2'}`}>
+        {occ.description}
+      </p>
+      {occ.deptName && (
+        <div className="mt-3 pt-3 border-t border-neutral-50 dark:border-neutral-800 flex items-center justify-between">
+          <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">{occ.deptName}</span>
+          <ArrowRight size={12} className="text-neutral-300 dark:text-neutral-700 group-hover:text-blue-400 transition-colors" />
+        </div>
+      )}
     </div>
   );
 }
@@ -566,33 +663,10 @@ function OccurrenceList({ occurrences }: { occurrences: any[] }) {
   return (
     <div className="space-y-4">
       {occurrences.length === 0 ? (
-        <p className="text-neutral-400 text-sm italic">Nenhuma ocorrência registrada.</p>
+        <p className="text-neutral-400 dark:text-neutral-500 text-sm italic">Nenhuma ocorrência registrada.</p>
       ) : (
         occurrences.map((occ, idx) => (
-          <div key={idx} className="group p-4 bg-white rounded-2xl border border-neutral-100 hover:border-blue-200 transition-all shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                occ.severity === 'high' ? 'bg-red-100 text-red-600' : 
-                occ.severity === 'medium' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
-              }`}>
-                {occ.severity === 'high' ? 'Crítica' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
-              </span>
-              <span className="text-[10px] text-neutral-400 flex items-center gap-1">
-                <Clock size={10} />
-                {new Date(occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-            <h4 className="font-bold text-neutral-900 text-sm mb-1 leading-tight group-hover:text-blue-600 transition-colors">
-              {occ.title || 'Sem Título'}
-            </h4>
-            <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{occ.description}</p>
-            {occ.deptName && (
-              <div className="mt-3 pt-3 border-t border-neutral-50 flex items-center justify-between">
-                <span className="text-[10px] font-medium text-neutral-400">{occ.deptName}</span>
-                <ArrowRight size={12} className="text-neutral-300 group-hover:text-blue-400 transition-colors" />
-              </div>
-            )}
-          </div>
+          <OccurrenceCard key={idx} occ={occ} />
         ))
       )}
     </div>
@@ -682,6 +756,7 @@ function DashboardView() {
   const vehicleStats = totalVehiclesExpected > 0 ? `${vehiclesReceived}/${totalVehiclesExpected}` : vehiclesReceived;
   
   const estoqueLog = logs.find(l => l.departmentId === 'estoque');
+  const paletsNoChao = estoqueLog?.data?.paletsNoChao || 0;
   const estoqueCapacity = settings?.departments?.estoque?.inventoryCapacity || 0;
   const estoqueAvailable = estoqueLog?.data?.availablePositions ?? estoqueCapacity;
   const estoqueOccupied = Math.max(0, estoqueCapacity - estoqueAvailable);
@@ -741,7 +816,7 @@ function DashboardView() {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
-    <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 overflow-auto' : 'space-y-10'}`}>
+    <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 dark:bg-neutral-950 overflow-auto' : 'space-y-10'}`}>
       <NewsTicker occurrences={allOccurrences} isTVMode={isTVMode} />
       
       <div className={isTVMode ? 'p-10' : ''}>
@@ -753,28 +828,28 @@ function DashboardView() {
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
               className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-lg"
             >
-              <div className={`bg-white border-l-8 ${
+              <div className={`bg-white dark:bg-neutral-900 border-l-8 ${
                 showNotification.severity === 'high' ? 'border-red-500' : 
                 showNotification.severity === 'medium' ? 'border-orange-500' : 'border-blue-500'
               } shadow-2xl rounded-2xl p-6 flex items-start gap-4 mx-4`}>
                 <div className={`p-3 rounded-xl ${
-                  showNotification.severity === 'high' ? 'bg-red-50' : 
-                  showNotification.severity === 'medium' ? 'bg-orange-50' : 'bg-blue-50'
+                  showNotification.severity === 'high' ? 'bg-red-50 dark:bg-red-900/30' : 
+                  showNotification.severity === 'medium' ? 'bg-orange-50 dark:bg-orange-900/30' : 'bg-blue-50 dark:bg-blue-900/30'
                 }`}>
                   <BellRing className={
-                    showNotification.severity === 'high' ? 'text-red-600' : 
-                    showNotification.severity === 'medium' ? 'text-orange-600' : 'text-blue-600'
+                    showNotification.severity === 'high' ? 'text-red-600 dark:text-red-400' : 
+                    showNotification.severity === 'medium' ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'
                   } size={32} />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">Nova Ocorrência: {showNotification.deptName}</span>
-                    <button onClick={() => setShowNotification(null)} className="text-neutral-400 hover:text-neutral-600">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Nova Ocorrência: {showNotification.deptName}</span>
+                    <button onClick={() => setShowNotification(null)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
                       <X size={20} />
                     </button>
                   </div>
-                  <h4 className="text-xl font-bold text-neutral-900 mb-1">{showNotification.title || 'Sem Título'}</h4>
-                  <p className="text-neutral-600 line-clamp-2">{showNotification.description}</p>
+                  <h4 className="text-xl font-bold text-neutral-900 dark:text-white mb-1">{showNotification.title || 'Sem Título'}</h4>
+                  <p className="text-neutral-600 dark:text-neutral-400 line-clamp-2">{showNotification.description}</p>
                 </div>
               </div>
             </motion.div>
@@ -785,13 +860,13 @@ function DashboardView() {
         <div className="flex-1 space-y-10">
           <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">Dashboard Geral</h2>
-              <p className="text-neutral-500 mt-1 text-sm md:text-base">Visão em tempo real de todos os departamentos</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">Dashboard Geral</h2>
+              <p className="text-neutral-500 dark:text-neutral-400 mt-1 text-sm md:text-base">Visão em tempo real de todos os departamentos</p>
             </div>
             <button 
               onClick={() => setIsTVMode(!isTVMode)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
-                isTVMode ? 'bg-blue-600 text-white' : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50'
+                isTVMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800'
               }`}
             >
               {isTVMode ? <Monitor size={20} /> : <Maximize size={20} />}
@@ -799,23 +874,24 @@ function DashboardView() {
             </button>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
             <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
             <StatCard title={`Veículos Recebidos (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
             <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
             <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" />
             <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" />
+            <StatCard title="Palets no Chão" value={paletsNoChao} icon={Package} colorClass="bg-amber-50 text-amber-600" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {chartData.map((dept, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm flex flex-col items-center text-center">
-                <span className="text-[10px] font-bold text-neutral-400 uppercase mb-1">{dept.name}</span>
+              <div key={idx} className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center">
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">{dept.name}</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-neutral-900">{dept.presente}</span>
-                  <span className="text-xs text-neutral-400 font-medium">/ {dept.total}</span>
+                  <span className="text-xl font-bold text-neutral-900 dark:text-white">{dept.presente}</span>
+                  <span className="text-xs text-neutral-400 dark:text-neutral-500 font-medium">/ {dept.total}</span>
                 </div>
-                <div className="w-full bg-neutral-100 h-1.5 rounded-full mt-3 overflow-hidden">
+                <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1.5 rounded-full mt-3 overflow-hidden">
                   <div 
                     className={`h-full transition-all duration-500 ${dept.percent < 70 ? 'bg-red-500' : dept.percent < 90 ? 'bg-orange-500' : 'bg-emerald-500'}`}
                     style={{ width: `${dept.percent}%` }}
@@ -826,8 +902,8 @@ function DashboardView() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-              <h3 className="text-lg font-bold mb-6">Comparecimento (%)</h3>
+            <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+              <h3 className="text-lg font-bold mb-6 dark:text-white">Comparecimento (%)</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
@@ -1054,10 +1130,10 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
     <div className="max-w-4xl space-y-8">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">{title}</h2>
-          <p className="text-neutral-500 mt-1 text-sm md:text-base">Gestão diária do departamento</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">{title}</h2>
+          <p className="text-neutral-500 dark:text-neutral-400 mt-1 text-sm md:text-base">Gestão diária do departamento</p>
         </div>
-        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2">
+        <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2">
           <Calendar size={16} />
           {new Date().toLocaleDateString('pt-BR')}
         </div>
@@ -1065,54 +1141,54 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
-          <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <Users size={20} className="text-blue-600" />
+          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
+              <Users size={20} className="text-blue-600 dark:text-blue-400" />
               Dados de Operação
             </h3>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-2">Total Colaboradores Presentes</label>
+                  <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">Total Colaboradores Presentes</label>
                   <input 
                     type="number" 
                     value={staffPresent}
                     onChange={(e) => setStaffPresent(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
-                  <p className="text-xs text-neutral-400 mt-2">Total do departamento: {totalStaff}</p>
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-2">Total do departamento: {totalStaff}</p>
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 pt-6">
-                <h4 className="text-sm font-bold text-neutral-900 mb-4">Colaboradores por Cargo</h4>
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6">
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Colaboradores por Cargo</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {roles.map((role: string) => (
                     <div key={role}>
-                      <label className="block text-xs font-medium text-neutral-500 mb-1">{role}</label>
+                      <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{role}</label>
                       <input 
                         type="number"
                         value={staffByRole[role] || 0}
                         onChange={(e) => setStaffByRole({...staffByRole, [role]: parseInt(e.target.value)})}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 pt-6">
-                <h4 className="text-sm font-bold text-neutral-900 mb-4">Métricas Específicas</h4>
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6">
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Métricas Específicas</h4>
                 <div className="space-y-4">
                   {fields.map(field => (
                     <div key={field.name}>
-                      <label className="block text-sm font-semibold text-neutral-700 mb-2">{field.label}</label>
+                      <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">{field.label}</label>
                       {field.type === 'number' ? (
                         <input 
                           type="number" 
                           value={extraData[field.name] || 0}
                           onChange={(e) => setExtraData({...extraData, [field.name]: parseInt(e.target.value)})}
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                         />
                       ) : field.type === 'multiselect' ? (
                         <div className="flex flex-wrap gap-2">
@@ -1128,7 +1204,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                                 (extraData[field.name] || []).includes(opt)
                                   ? 'bg-blue-600 text-white'
-                                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
                               }`}
                             >
                               {opt}
@@ -1139,7 +1215,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {field.options.map((opt: string) => (
                             <div key={opt}>
-                              <label className="block text-xs font-medium text-neutral-500 mb-1">{opt}</label>
+                              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{opt}</label>
                               <input 
                                 type="number"
                                 value={(extraData[field.name] || {})[opt] || 0}
@@ -1157,7 +1233,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                                   
                                   setExtraData(nextExtraData);
                                 }}
-                                className="w-full px-3 py-2 rounded-lg border border-neutral-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                               />
                             </div>
                           ))}
@@ -1168,15 +1244,15 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+              <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none">
                 Salvar Dados do Dia
               </button>
             </form>
           </section>
 
-          <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <AlertCircle size={20} className="text-red-600" />
+          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
+              <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
               Registrar Ocorrência
             </h3>
             <div className="space-y-4">
@@ -1185,19 +1261,19 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                 placeholder="Título da ocorrência (ex: Atraso de Veículo)"
                 value={occurrenceTitle}
                 onChange={(e) => setOccurrenceTitle(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
               />
               <textarea 
                 placeholder="Descreva os detalhes..."
                 value={occurrence}
                 onChange={(e) => setOccurrence(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
               />
               <div className="flex items-center gap-4">
                 <select 
                   value={severity}
                   onChange={(e: any) => setSeverity(e.target.value)}
-                  className="px-4 py-2 rounded-xl border border-neutral-200 text-sm outline-none"
+                  className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm outline-none"
                 >
                   <option value="low">Baixa Gravidade</option>
                   <option value="medium">Média Gravidade</option>
@@ -1206,7 +1282,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                 <button 
                   onClick={addOccurrence}
                   disabled={!occurrenceTitle || !occurrence}
-                  className="flex-1 bg-neutral-900 text-white py-2 rounded-xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2 rounded-xl font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Plus size={18} />
                   Adicionar
@@ -1217,24 +1293,24 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
         </div>
 
         <div className="space-y-8">
-          <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <History size={20} className="text-neutral-400" />
+          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
+              <History size={20} className="text-neutral-400 dark:text-neutral-500" />
               Ocorrências de Hoje
             </h3>
             <OccurrenceList occurrences={logs.find(l => l.date === today)?.occurrences || []} />
           </section>
 
-          <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100">
-            <h3 className="text-lg font-bold mb-6">Histórico Recente</h3>
+          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <h3 className="text-lg font-bold mb-6 dark:text-white">Histórico Recente</h3>
             <div className="space-y-4">
               {logs.filter(l => l.date !== today).map((log, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 hover:bg-neutral-50 rounded-xl transition-all cursor-default">
+                <div key={idx} className="flex items-center justify-between p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-all cursor-default">
                   <div>
-                    <p className="text-sm font-bold text-neutral-800">{new Date(log.date).toLocaleDateString('pt-BR')}</p>
-                    <p className="text-xs text-neutral-400">{log.staffPresent} presentes</p>
+                    <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{new Date(log.date).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500">{log.staffPresent} presentes</p>
                   </div>
-                  <ChevronRight size={16} className="text-neutral-300" />
+                  <ChevronRight size={16} className="text-neutral-300 dark:text-neutral-700" />
                 </div>
               ))}
             </div>
@@ -1262,7 +1338,8 @@ function EstoqueView() {
     departmentId="estoque" 
     title="Estoque" 
     fields={[
-      { name: 'availablePositions', label: 'Posições Disponíveis Hoje', type: 'number' }
+      { name: 'availablePositions', label: 'Posições Disponíveis Hoje', type: 'number' },
+      { name: 'paletsNoChao', label: 'Palets no Chão', type: 'number' }
     ]} 
   />;
 }
@@ -1460,81 +1537,81 @@ function SettingsView() {
   if (loading || !settings || !settings.departments) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4">
       <Loader2 className="animate-spin text-blue-600" size={48} />
-      <p className="text-neutral-500 font-medium">Carregando configurações...</p>
+      <p className="text-neutral-500 dark:text-neutral-400 font-medium">Carregando configurações...</p>
     </div>
   );
 
   return (
     <div className="space-y-10 max-w-5xl">
       <header>
-        <h2 className="text-3xl font-bold text-neutral-900">Configurações do Sistema</h2>
-        <p className="text-neutral-500 mt-1">Gerencie cargos, equipes e veículos</p>
+        <h2 className="text-3xl font-bold text-neutral-900 dark:text-white">Configurações do Sistema</h2>
+        <p className="text-neutral-500 dark:text-neutral-400 mt-1">Gerencie cargos, equipes e veículos</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100 space-y-6">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Lock size={24} className="text-red-600" />
+        <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
+          <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
+            <Lock size={24} className="text-red-600 dark:text-red-400" />
             Segurança e Senhas
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Senha do Administrador</label>
+              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Senha do Administrador</label>
               <input 
                 type="text"
                 defaultValue={authSettings?.admin}
                 onBlur={(e) => updatePasswords(e.target.value, authSettings?.user)}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Senha dos Usuários (Setores)</label>
+              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Senha dos Usuários (Setores)</label>
               <input 
                 type="text"
                 defaultValue={authSettings?.user}
                 onBlur={(e) => updatePasswords(authSettings?.admin, e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
           </div>
         </section>
 
-        <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100 space-y-6">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Users size={24} className="text-blue-600" />
+        <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
+          <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
+            <Users size={24} className="text-blue-600 dark:text-blue-400" />
             Cargos e Equipes
           </h3>
           <div className="space-y-6">
             {Object.values(DEPARTMENTS).map(dept => (
-              <div key={dept.id} className="p-4 bg-neutral-50 rounded-2xl space-y-3">
-                <p className="font-bold text-neutral-900">{dept.name}</p>
+              <div key={dept.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-2xl space-y-3">
+                <p className="font-bold text-neutral-900 dark:text-white">{dept.name}</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Total Equipe</label>
+                    <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Total Equipe</label>
                     <input 
                       type="number"
                       value={settings.departments?.[dept.id]?.totalStaff || 0}
                       onChange={(e) => updateDeptStaff(dept.id, parseInt(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Cargos (separados por vírgula)</label>
+                    <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Cargos (separados por vírgula)</label>
                     <input 
                       type="text"
                       defaultValue={settings.departments?.[dept.id]?.roles?.join(', ') || ''}
                       onBlur={(e) => updateDeptRoles(dept.id, e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   {dept.id === 'estoque' && (
                     <div className="col-span-2">
-                      <label className="block text-xs font-bold text-neutral-400 uppercase mb-1">Capacidade Total (Posições)</label>
+                      <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Capacidade Total (Posições)</label>
                       <input 
                         type="number"
                         value={settings.departments?.[dept.id]?.inventoryCapacity || 0}
                         onChange={(e) => updateDeptCapacity(dept.id, parseInt(e.target.value))}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   )}
@@ -1544,31 +1621,31 @@ function SettingsView() {
           </div>
         </section>
 
-        <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100 space-y-6">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Truck size={24} className="text-emerald-600" />
+        <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
+          <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
+            <Truck size={24} className="text-emerald-600 dark:text-emerald-400" />
             Frota de Veículos
           </h3>
           
-          <div className="bg-neutral-50 p-4 rounded-2xl space-y-4">
-            <p className="text-sm font-bold">Cadastrar Novo Veículo</p>
+          <div className="bg-neutral-50 dark:bg-neutral-800 p-4 rounded-2xl space-y-4">
+            <p className="text-sm font-bold dark:text-white">Cadastrar Novo Veículo</p>
             <div className="grid grid-cols-2 gap-3">
               <input 
                 placeholder="Placa"
                 value={newVehicle.plate}
                 onChange={(e) => setNewVehicle({...newVehicle, plate: e.target.value.toUpperCase()})}
-                className="px-3 py-2 rounded-lg border border-neutral-200 outline-none"
+                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
               />
               <input 
                 placeholder="Modelo"
                 value={newVehicle.model}
                 onChange={(e) => setNewVehicle({...newVehicle, model: e.target.value})}
-                className="px-3 py-2 rounded-lg border border-neutral-200 outline-none"
+                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
               />
               <select 
                 value={newVehicle.type}
                 onChange={(e) => setNewVehicle({...newVehicle, type: e.target.value})}
-                className="col-span-2 px-3 py-2 rounded-lg border border-neutral-200 outline-none"
+                className="col-span-2 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
               >
                 <option value="">Selecione o Tipo</option>
                 {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -1584,14 +1661,14 @@ function SettingsView() {
 
           <div className="space-y-2 max-h-[400px] overflow-auto">
             {settings.vehicles?.map((v: any) => (
-              <div key={v.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
+              <div key={v.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
                 <div>
-                  <p className="font-bold text-sm">{v.plate}</p>
-                  <p className="text-xs text-neutral-500">{v.model} • {v.type}</p>
+                  <p className="font-bold text-sm dark:text-white">{v.plate}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{v.model} • {v.type}</p>
                 </div>
                 <button 
                   onClick={() => removeVehicle(v.id)}
-                  className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
+                  className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
                 >
                   <LogOut size={16} />
                 </button>
@@ -1602,6 +1679,49 @@ function SettingsView() {
       </div>
 
       <OccurrenceHistory />
+    </div>
+  );
+}
+
+function HistoryOccurrenceCard({ occ }: { occ: any }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div 
+      onClick={() => setIsExpanded(!isExpanded)}
+      className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-neutral-100 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-start justify-between gap-4 cursor-pointer hover:border-blue-200 dark:hover:border-blue-900 transition-all"
+    >
+      <div className="flex items-start gap-3 flex-1">
+        <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+          occ.severity === 'high' ? 'bg-red-500' : 
+          occ.severity === 'medium' ? 'bg-orange-500' : 'bg-blue-500'
+        }`} />
+        <div className="flex-1">
+          <p className={`text-sm font-medium text-neutral-900 dark:text-neutral-100 leading-relaxed ${isExpanded ? '' : 'line-clamp-1 sm:line-clamp-2'}`}>
+            {occ.description}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">{occ.deptName}</span>
+            <span className="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+              <Calendar size={12} />
+              {new Date(occ.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+            </span>
+            <span className="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+              <History size={12} />
+              {new Date(occ.timestamp).toLocaleTimeString()}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0">
+        <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+          occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 
+          occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+        }`}>
+          {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+        </div>
+        {isExpanded ? <ChevronUp size={14} className="text-neutral-300" /> : <ChevronDown size={14} className="text-neutral-300" />}
+      </div>
     </div>
   );
 }
@@ -1639,35 +1759,35 @@ function OccurrenceHistory() {
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
-    <section className="bg-white p-8 rounded-3xl shadow-sm border border-neutral-100 space-y-6">
+    <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h3 className="text-xl font-bold flex items-center gap-2">
-          <History size={24} className="text-orange-600" />
+        <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
+          <History size={24} className="text-orange-600 dark:text-orange-400" />
           Histórico de Ocorrências
         </h3>
         
         <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200">
-            <Filter size={16} className="text-neutral-400" />
+          <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700">
+            <Filter size={16} className="text-neutral-400 dark:text-neutral-500" />
             <select 
               value={filterDept}
               onChange={(e) => setFilterDept(e.target.value)}
-              className="bg-transparent text-sm outline-none font-medium"
+              className="bg-transparent text-sm outline-none font-medium dark:text-white"
             >
-              <option value="all">Todos Departamentos</option>
+              <option value="all" className="dark:bg-neutral-800">Todos Departamentos</option>
               {Object.values(DEPARTMENTS).map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+                <option key={dept.id} value={dept.id} className="dark:bg-neutral-800">{dept.name}</option>
               ))}
             </select>
           </div>
           
-          <div className="flex items-center gap-2 bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200">
-            <Calendar size={16} className="text-neutral-400" />
+          <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700">
+            <Calendar size={16} className="text-neutral-400 dark:text-neutral-500" />
             <input 
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="bg-transparent text-sm outline-none font-medium"
+              className="bg-transparent text-sm outline-none font-medium dark:text-white dark:color-scheme-dark"
             />
           </div>
         </div>
@@ -1675,39 +1795,12 @@ function OccurrenceHistory() {
 
       <div className="space-y-4 max-h-[600px] overflow-auto pr-2">
         {filteredOccurrences.length === 0 ? (
-          <div className="text-center py-12 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
-            <p className="text-neutral-400">Nenhuma ocorrência encontrada com os filtros selecionados.</p>
+          <div className="text-center py-12 bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-700">
+            <p className="text-neutral-400 dark:text-neutral-500">Nenhuma ocorrência encontrada com os filtros selecionados.</p>
           </div>
         ) : (
           filteredOccurrences.map((occ, idx) => (
-            <div key={idx} className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
-                  occ.severity === 'high' ? 'bg-red-500' : 
-                  occ.severity === 'medium' ? 'bg-orange-500' : 'bg-blue-500'
-                }`} />
-                <div>
-                  <p className="text-sm font-medium text-neutral-900">{occ.description}</p>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                    <span className="text-xs font-bold text-blue-600 uppercase">{occ.deptName}</span>
-                    <span className="text-xs text-neutral-400 flex items-center gap-1">
-                      <Calendar size={12} />
-                      {new Date(occ.date + 'T00:00:00').toLocaleDateString('pt-BR')}
-                    </span>
-                    <span className="text-xs text-neutral-400 flex items-center gap-1">
-                      <History size={12} />
-                      {new Date(occ.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                occ.severity === 'high' ? 'bg-red-100 text-red-700' : 
-                occ.severity === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
-              }`}>
-                {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
-              </div>
-            </div>
+            <HistoryOccurrenceCard key={idx} occ={occ} />
           ))
         )}
       </div>
