@@ -603,17 +603,17 @@ import {
 
 // --- Shared Components ---
 
-function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue-600" }: any) {
+function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue-600", isTVMode }: any) {
   return (
-    <div className="bg-white dark:bg-neutral-900 p-4 md:p-6 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 flex justify-between items-center gap-4 min-w-0">
+    <div className={`bg-white dark:bg-neutral-900 ${isTVMode ? 'p-8' : 'p-4 md:p-6'} rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 flex justify-between items-center gap-4 min-w-0 transition-all`}>
       <div className="flex flex-col gap-3 min-w-0">
-        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 ${colorClass} dark:bg-opacity-10`}>
-          <Icon className="w-5 h-5 md:w-6 md:h-6" />
+        <div className={`${isTVMode ? 'w-16 h-16 mb-2' : 'w-10 h-10 md:w-12 md:h-12'} rounded-xl flex items-center justify-center shrink-0 ${colorClass} dark:bg-opacity-10`}>
+          <Icon className={isTVMode ? 'w-8 h-8' : 'w-5 h-5 md:w-6 md:h-6'} />
         </div>
-        <p className="text-neutral-500 dark:text-neutral-400 text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight break-words">{title}</p>
+        <p className={`text-neutral-500 dark:text-neutral-400 ${isTVMode ? 'text-sm' : 'text-[10px] md:text-xs'} font-bold uppercase tracking-wider leading-tight break-words`}>{title}</p>
       </div>
       <div className="text-right shrink-0">
-        <p className="text-2xl md:text-4xl font-black text-neutral-900 dark:text-white">{value}</p>
+        <p className={`font-black text-neutral-900 dark:text-white ${isTVMode ? 'text-6xl' : 'text-2xl md:text-4xl'}`}>{value}</p>
       </div>
     </div>
   );
@@ -755,6 +755,11 @@ function DashboardView() {
   const totalVehiclesExpected = recebimentoLog?.data?.totalVehicles || 0;
   const vehicleStats = totalVehiclesExpected > 0 ? `${vehiclesReceived}/${totalVehiclesExpected}` : vehiclesReceived;
   
+  const totalPaletsPrevistos = Object.entries(recebimentoLog?.data?.vehiclesByType || {}).reduce((acc, [typeName, count]) => {
+    const config = settings?.vehicleConfig?.find((c: any) => c.name === typeName);
+    return acc + (Number(count) * (config?.palletCapacity || 0));
+  }, 0);
+  
   const estoqueLog = logs.find(l => l.departmentId === 'estoque');
   const paletsNoChao = estoqueLog?.data?.paletsNoChao || 0;
   const estoqueCapacity = settings?.departments?.estoque?.inventoryCapacity || 0;
@@ -819,7 +824,7 @@ function DashboardView() {
     <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 dark:bg-neutral-950 overflow-auto' : 'space-y-10'}`}>
       <NewsTicker occurrences={allOccurrences} isTVMode={isTVMode} />
       
-      <div className={isTVMode ? 'p-10' : ''}>
+      <div className={isTVMode ? 'p-12 space-y-12' : ''}>
         <AnimatePresence>
           {showNotification && (
             <motion.div
@@ -856,41 +861,51 @@ function DashboardView() {
           )}
         </AnimatePresence>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className={`flex flex-col ${isTVMode ? 'gap-12' : 'lg:flex-row gap-8'}`}>
         <div className="flex-1 space-y-10">
-          <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <header className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${isTVMode ? 'mb-4' : ''}`}>
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">Dashboard Geral</h2>
-              <p className="text-neutral-500 dark:text-neutral-400 mt-1 text-sm md:text-base">Visão em tempo real de todos os departamentos</p>
+              <h2 className={`${isTVMode ? 'text-5xl mb-2' : 'text-2xl md:text-3xl'} font-bold text-neutral-900 dark:text-white`}>Dashboard Geral</h2>
+              <p className={`text-neutral-500 dark:text-neutral-400 mt-1 ${isTVMode ? 'text-xl' : 'text-sm md:text-base'}`}>Visão em tempo real de todos os departamentos</p>
             </div>
-            <button 
-              onClick={() => setIsTVMode(!isTVMode)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all ${
-                isTVMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-              }`}
-            >
-              {isTVMode ? <Monitor size={20} /> : <Maximize size={20} />}
-              {isTVMode ? 'Sair do Modo TV' : 'Modo TV'}
-            </button>
+            {!isTVMode && (
+              <button 
+                onClick={() => setIsTVMode(!isTVMode)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              >
+                <Maximize size={20} />
+                Modo TV
+              </button>
+            )}
+            {isTVMode && (
+              <button 
+                onClick={() => setIsTVMode(false)}
+                className="fixed top-12 right-12 z-[110] bg-neutral-900/50 hover:bg-neutral-900 text-white p-4 rounded-full transition-all shadow-2xl backdrop-blur-md"
+                title="Sair do Modo TV"
+              >
+                <X size={32} />
+              </button>
+            )}
           </header>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
-            <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} />
-            <StatCard title={`Veículos Recebidos (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" />
-            <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" />
-            <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" />
-            <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" />
+          <div className={`grid gap-6 ${isTVMode ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'}`}>
+            <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} isTVMode={isTVMode} />
+            <StatCard title={`Veículos Recebidos (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" isTVMode={isTVMode} />
+            <StatCard title="Palets Previstos" value={totalPaletsPrevistos} icon={Package} colorClass="bg-amber-50 text-amber-600" isTVMode={isTVMode} />
+            <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" isTVMode={isTVMode} />
+            <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" isTVMode={isTVMode} />
+            <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" isTVMode={isTVMode} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className={`grid gap-4 ${isTVMode ? 'grid-cols-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'}`}>
             {chartData.map((dept, idx) => (
-              <div key={idx} className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center">
-                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">{dept.name}</span>
+              <div key={idx} className={`bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center transition-all ${isTVMode ? 'p-6 rounded-3xl' : 'p-4 rounded-2xl'}`}>
+                <span className={`font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1 ${isTVMode ? 'text-sm' : 'text-[10px]'}`}>{dept.name}</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-neutral-900 dark:text-white">{dept.presente}</span>
-                  <span className="text-xs text-neutral-400 dark:text-neutral-500 font-medium">/ {dept.total}</span>
+                  <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-3xl' : 'text-xl'}`}>{dept.presente}</span>
+                  <span className={`text-neutral-400 dark:text-neutral-500 font-medium ${isTVMode ? 'text-base' : 'text-xs'}`}>/ {dept.total}</span>
                 </div>
-                <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                <div className={`w-full bg-neutral-100 dark:bg-neutral-800 rounded-full mt-3 overflow-hidden ${isTVMode ? 'h-3' : 'h-1.5'}`}>
                   <div 
                     className={`h-full transition-all duration-500 ${dept.percent < 70 ? 'bg-red-500' : dept.percent < 90 ? 'bg-orange-500' : 'bg-emerald-500'}`}
                     style={{ width: `${dept.percent}%` }}
@@ -900,20 +915,20 @@ function DashboardView() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
-              <h3 className="text-lg font-bold mb-6 dark:text-white">Comparecimento (%)</h3>
-              <div className="h-80">
+          <div className={`grid gap-8 ${isTVMode ? 'grid-cols-2' : 'grid-cols-1 lg:grid-cols-2'}`}>
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-10' : 'p-8'}`}>
+              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-2xl' : 'text-lg'}`}>Comparecimento (%)</h3>
+              <div className={isTVMode ? 'h-[500px]' : 'h-80'}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} unit="%" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 12}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 12}} unit="%" />
                     <Tooltip 
                       cursor={{fill: '#f9fafb'}}
-                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
+                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '16px' : '12px'}}
                     />
-                    <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40}>
+                    <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={isTVMode ? 80 : 40}>
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.percent < 70 ? '#ef4444' : entry.percent < 90 ? '#f59e0b' : '#10b981'} />
                       ))}
@@ -923,26 +938,26 @@ function DashboardView() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-10' : 'p-8'}`}>
               <div className="flex justify-between items-start mb-6">
-                <h3 className="text-lg font-bold dark:text-white">Ocupação Estoque</h3>
-                <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-2xl border border-amber-100 dark:border-amber-800/50">
-                  <Package className="text-amber-600 dark:text-amber-400 w-5 h-5" />
+                <h3 className={`font-bold dark:text-white ${isTVMode ? 'text-2xl' : 'text-lg'}`}>Ocupação Estoque</h3>
+                <div className={`flex items-center bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50 ${isTVMode ? 'px-8 py-4 gap-6' : 'px-4 py-2 gap-3'}`}>
+                  <Package className={`text-amber-600 dark:text-amber-400 ${isTVMode ? 'w-10 h-10' : 'w-5 h-5'}`} />
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase leading-none">Palets no Chão</p>
-                    <p className="text-xl font-black text-amber-700 dark:text-amber-300 mt-1 leading-none">{paletsNoChao}</p>
+                    <p className={`font-bold text-amber-600 dark:text-amber-500 uppercase leading-none ${isTVMode ? 'text-sm mb-1' : 'text-[10px]'}`}>Palets no Chão</p>
+                    <p className={`font-black text-amber-700 dark:text-amber-300 leading-none ${isTVMode ? 'text-4xl' : 'text-xl'}`}>{paletsNoChao}</p>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center h-80">
-                <div className="relative w-48 h-48">
-                  <svg className="w-full h-full transform -rotate-90">
+              <div className={`flex flex-col items-center justify-center ${isTVMode ? 'h-[500px]' : 'h-80'}`}>
+                <div className={`relative ${isTVMode ? 'w-80 h-80' : 'w-48 h-48'}`}>
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 192 192">
                     <circle
                       cx="96"
                       cy="96"
                       r="88"
                       stroke="currentColor"
-                      strokeWidth="16"
+                      strokeWidth={isTVMode ? "12" : "16"}
                       fill="transparent"
                       className="text-neutral-100 dark:text-neutral-800"
                     />
@@ -951,84 +966,116 @@ function DashboardView() {
                       cy="96"
                       r="88"
                       stroke="currentColor"
-                      strokeWidth="16"
+                      strokeWidth={isTVMode ? "12" : "16"}
                       fill="transparent"
                       strokeDasharray={552.92}
                       strokeDashoffset={552.92 - (552.92 * estoqueOccupancyPercent) / 100}
                       className={`${estoqueOccupancyPercent > 90 ? 'text-red-500' : estoqueOccupancyPercent > 70 ? 'text-orange-500' : 'text-blue-500'} transition-all duration-1000`}
+                      strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-neutral-900 dark:text-white">{estoqueOccupancyPercent}%</span>
-                    <span className="text-xs text-neutral-400 dark:text-neutral-500 font-bold uppercase">Ocupado</span>
+                    <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-7xl' : 'text-4xl'}`}>{estoqueOccupancyPercent}%</span>
+                    <span className={`text-neutral-400 dark:text-neutral-500 font-bold uppercase ${isTVMode ? 'text-lg mt-2' : 'text-xs'}`}>Ocupado</span>
                   </div>
                 </div>
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                <div className="mt-8 text-center">
+                  <p className={`text-neutral-500 dark:text-neutral-400 ${isTVMode ? 'text-xl' : 'text-sm'}`}>
                     <span className="font-bold text-neutral-900 dark:text-neutral-200">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900 dark:text-neutral-200">{estoqueCapacity}</span> posições
                   </p>
-                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                  <p className={`text-neutral-400 dark:text-neutral-500 mt-2 ${isTVMode ? 'text-lg' : 'text-xs'}`}>
                     ({estoqueAvailable} disponíveis)
                   </p>
                 </div>
               </div>
             </div>
           </div>
+
+          {isTVMode && (
+             <div className="bg-white dark:bg-neutral-900 p-10 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+               <div className="flex items-center gap-4 mb-8">
+                 <div className="p-3 bg-neutral-900 rounded-xl">
+                   <Newspaper size={32} className="text-blue-400" />
+                 </div>
+                 <h3 className="text-3xl font-bold dark:text-white">Últimas Ocorrências</h3>
+               </div>
+               <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                 {filteredOccurrences.slice(0, 6).map((occ, idx) => (
+                   <div key={idx} className="p-6 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                     <div className="flex items-center justify-between mb-4">
+                        <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full ${
+                          occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 
+                          occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 
+                          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                        }`}>
+                          {occ.severity === 'high' ? 'Crítica' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+                        </span>
+                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{occ.deptName}</span>
+                     </div>
+                     <h4 className="text-lg font-bold mb-2 dark:text-white line-clamp-1">{occ.title || 'Sem Título'}</h4>
+                     <p className="text-neutral-500 dark:text-neutral-400 line-clamp-3 text-sm">{occ.description}</p>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          )}
         </div>
 
-        <aside className="w-full lg:w-80 shrink-0">
-          <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden sticky top-8">
-            <div className="bg-neutral-900 p-6 text-white">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-white/10 rounded-lg">
-                  <Newspaper size={20} className="text-blue-400" />
-                </div>
-                <h3 className="text-lg font-bold">Ocorrências</h3>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                  <input 
-                    type="text"
-                    placeholder="Filtrar por texto..."
-                    value={filterSearch}
-                    onChange={(e) => setFilterSearch(e.target.value)}
-                    className="w-full bg-white/10 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:bg-white/20 transition-all placeholder:text-neutral-500"
-                  />
+        {!isTVMode && (
+          <aside className="w-full lg:w-80 shrink-0">
+            <div className="bg-white rounded-3xl shadow-sm border border-neutral-100 overflow-hidden sticky top-8">
+              <div className="bg-neutral-900 p-6 text-white">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-white/10 rounded-lg">
+                    <Newspaper size={20} className="text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-bold">Ocorrências</h3>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
                   <div className="relative">
-                    <Calendar size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input 
-                      type="date"
-                      value={filterDate}
-                      onChange={(e) => setFilterDate(e.target.value)}
-                      className="w-full bg-white/10 border border-white/10 rounded-lg py-1.5 pl-7 pr-2 text-[10px] outline-none focus:bg-white/20 transition-all"
+                      type="text"
+                      placeholder="Filtrar por texto..."
+                      value={filterSearch}
+                      onChange={(e) => setFilterSearch(e.target.value)}
+                      className="w-full bg-white/10 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:bg-white/20 transition-all placeholder:text-neutral-500"
                     />
                   </div>
-                  <div className="relative">
-                    <Filter size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
-                    <select
-                      value={filterDept}
-                      onChange={(e) => setFilterDept(e.target.value)}
-                      className="w-full bg-white/10 border border-white/10 rounded-lg py-1.5 pl-7 pr-2 text-[10px] outline-none focus:bg-white/20 transition-all appearance-none"
-                    >
-                      <option value="all" className="bg-neutral-900">Todos</option>
-                      {Object.values(DEPARTMENTS).map(d => (
-                        <option key={d.id} value={d.id} className="bg-neutral-900">{d.name}</option>
-                      ))}
-                    </select>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <Calendar size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                      <input 
+                        type="date"
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-lg py-1.5 pl-7 pr-2 text-[10px] outline-none focus:bg-white/20 transition-all"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Filter size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                      <select
+                        value={filterDept}
+                        onChange={(e) => setFilterDept(e.target.value)}
+                        className="w-full bg-white/10 border border-white/10 rounded-lg py-1.5 pl-7 pr-2 text-[10px] outline-none focus:bg-white/20 transition-all appearance-none"
+                      >
+                        <option value="all" className="bg-neutral-900">Todos</option>
+                        {Object.values(DEPARTMENTS).map(d => (
+                          <option key={d.id} value={d.id} className="bg-neutral-900">{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
+              <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar">
+                <OccurrenceList occurrences={filteredOccurrences} />
+              </div>
             </div>
-            <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar">
-              <OccurrenceList occurrences={filteredOccurrences} />
-            </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
     </div>
   </div>
@@ -1330,13 +1377,23 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
 }
 
 function RecebimentoView() {
+  const [settings, setSettings] = useState<any>(null);
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) setSettings(docSnap.data());
+    });
+  }, []);
+
+  const vehicleOptions = settings?.vehicleConfig?.map((t: any) => t.name) || VEHICLE_TYPES;
+
   return <DepartmentView 
     departmentId="recebimento" 
     title="Recebimento" 
     fields={[
       { name: 'totalVehicles', label: 'Total de Veículos Previstos', type: 'number' },
       { name: 'vehiclesReceived', label: 'Veículos Recebidos até o momento', type: 'number' },
-      { name: 'vehiclesByType', label: 'Quantidade por Tipo de Veículo', type: 'counter-list', options: VEHICLE_TYPES }
+      { name: 'vehiclesByType', label: 'Quantidade por Tipo de Veículo', type: 'counter-list', options: vehicleOptions }
     ]} 
   />;
 }
@@ -1421,6 +1478,7 @@ function SettingsView() {
   const [authSettings, setAuthSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [newVehicle, setNewVehicle] = useState({ plate: '', model: '', type: '' });
+  const [newType, setNewType] = useState({ name: '', palletCapacity: 0 });
 
   useEffect(() => {
     const unsubGlobal = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
@@ -1435,7 +1493,16 @@ function SettingsView() {
               totalStaff: DEPARTMENTS[key as DepartmentId].totalStaff
             }
           }), {}),
-          vehicles: []
+          vehicles: [],
+          vehicleConfig: [
+            { id: '1', name: 'Carreta', palletCapacity: 26 },
+            { id: '2', name: 'Truck', palletCapacity: 12 },
+            { id: '3', name: 'Toco', palletCapacity: 8 },
+            { id: '4', name: 'Van', palletCapacity: 4 },
+            { id: '5', name: 'HR', palletCapacity: 3 },
+            { id: '6', name: 'Furgão', palletCapacity: 2 },
+            { id: '7', name: 'Fiorino', palletCapacity: 1 },
+          ]
         };
         setDoc(doc(db, 'settings', 'global'), initialSettings);
         setSettings(initialSettings);
@@ -1525,6 +1592,33 @@ function SettingsView() {
     try {
       await setDoc(doc(db, 'settings', 'global'), newSettings);
       setNewVehicle({ plate: '', model: '', type: '' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/global');
+    }
+  };
+
+  const addVehicleType = async () => {
+    if (!newType.name) return;
+    const type = { ...newType, id: Math.random().toString(36).substr(2, 9) };
+    const newSettings = {
+      ...settings,
+      vehicleConfig: [...(settings.vehicleConfig || []), type]
+    };
+    try {
+      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      setNewType({ name: '', palletCapacity: 0 });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/global');
+    }
+  };
+
+  const removeVehicleType = async (id: string) => {
+    const newSettings = {
+      ...settings,
+      vehicleConfig: (settings.vehicleConfig || []).filter((t: any) => t.id !== id)
+    };
+    try {
+      await setDoc(doc(db, 'settings', 'global'), newSettings);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
@@ -1656,7 +1750,9 @@ function SettingsView() {
                 className="col-span-2 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
               >
                 <option value="">Selecione o Tipo</option>
-                {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {(settings.vehicleConfig || VEHICLE_TYPES.map(name => ({ name }))).map((t: any) => (
+                  <option key={t.id || t.name} value={t.name}>{t.name}</option>
+                ))}
               </select>
             </div>
             <button 
@@ -1665,6 +1761,48 @@ function SettingsView() {
             >
               Adicionar Veículo
             </button>
+          </div>
+
+          <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
+            <h4 className="text-sm font-bold dark:text-white">Tipos de Veículos e Capacidades</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <input 
+                placeholder="Nome do Tipo (ex: Carreta)"
+                value={newType.name}
+                onChange={(e) => setNewType({...newType, name: e.target.value})}
+                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+              />
+              <input 
+                type="number"
+                placeholder="Palets"
+                value={newType.palletCapacity || ''}
+                onChange={(e) => setNewType({...newType, palletCapacity: parseInt(e.target.value) || 0})}
+                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+              />
+              <button 
+                onClick={addVehicleType}
+                className="col-span-2 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-all"
+              >
+                Adicionar Tipo
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[300px] overflow-auto">
+              {settings.vehicleConfig?.map((t: any) => (
+                <div key={t.id} className="flex items-center justify-between p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+                  <div>
+                    <p className="font-bold text-sm dark:text-white">{t.name}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.palletCapacity} Palets</p>
+                  </div>
+                  <button 
+                    onClick={() => removeVehicleType(t.id)}
+                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2 max-h-[400px] overflow-auto">

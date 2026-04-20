@@ -29,9 +29,16 @@ export interface DepartmentSettings {
   inventoryCapacity?: number;
 }
 
+export interface VehicleTypeConfig {
+  id: string;
+  name: string;
+  palletCapacity: number;
+}
+
 export interface AppSettings {
   departments: Record<DepartmentId, DepartmentSettings>;
   vehicles: Vehicle[];
+  vehicleConfig?: VehicleTypeConfig[];
 }
 
 export interface DailyLog {
@@ -43,13 +50,16 @@ export interface DailyLog {
   occurrences: Occurrence[];
   data: {
     vehiclesReceived?: number;
+    totalVehicles?: number;
     vehicleTypes?: string[];
     vehiclesByType?: Record<string, number>;
     ordersCount?: number;
     pickersCount?: number;
     driversCount?: number;
     registeredVehicles?: string[]; // IDs of vehicles registered in the day
-    occupiedPositions?: number;
+    availablePositions?: number;
+    paletsNoChao?: number;
+    folhas?: number;
   };
 }
 
