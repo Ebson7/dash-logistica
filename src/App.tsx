@@ -10,7 +10,7 @@ import {
   signOut, 
   User 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile, DepartmentId } from './types';
 import { DEPARTMENTS, VEHICLE_TYPES } from './constants';
@@ -46,7 +46,9 @@ import {
   X,
   ExternalLink,
   Moon,
-  Sun
+  Sun,
+  FileDown,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -818,6 +820,12 @@ function DashboardView() {
     };
   });
 
+  const inventoryChartData = [
+    { name: 'Capacidade Total', value: estoqueCapacity, fill: '#3b82f6' },
+    { name: 'Palets no Chão', value: paletsNoChao, fill: '#f59e0b' },
+    { name: 'Palets Disponíveis', value: estoqueAvailable, fill: '#10b981' }
+  ];
+
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
@@ -987,6 +995,28 @@ function DashboardView() {
                     ({estoqueAvailable} disponíveis)
                   </p>
                 </div>
+              </div>
+            </div>
+
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-10' : 'p-8'}`}>
+              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-2xl' : 'text-lg'}`}>Métricas de Inventário</h3>
+              <div className={isTVMode ? 'h-[500px]' : 'h-80'}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={inventoryChartData} layout="vertical" margin={{ left: isTVMode ? 40 : 20, right: 40, top: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 12}} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 12}} width={isTVMode ? 200 : 130} />
+                    <Tooltip 
+                      cursor={{fill: '#f9fafb'}}
+                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '16px' : '12px'}}
+                    />
+                    <Bar dataKey="value" name="Quantidade" radius={[0, 6, 6, 0]} barSize={isTVMode ? 60 : 30}>
+                      {inventoryChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
@@ -1479,6 +1509,12 @@ function SettingsView() {
   const [loading, setLoading] = useState(true);
   const [newVehicle, setNewVehicle] = useState({ plate: '', model: '', type: '' });
   const [newType, setNewType] = useState({ name: '', palletCapacity: 0 });
+  
+  const today = new Date().toISOString().split('T')[0];
+  const [reportRange, setReportRange] = useState({ start: today, end: today });
+  const [reportDept, setReportDept] = useState('all');
+  const [reportSeverity, setReportSeverity] = useState('all');
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   useEffect(() => {
     const unsubGlobal = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
@@ -1633,6 +1669,80 @@ function SettingsView() {
       await setDoc(doc(db, 'settings', 'global'), newSettings);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
+    }
+  };
+
+  const exportOccurrencesReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const q = query(
+        collection(db, 'logs'),
+        where('date', '>=', reportRange.start),
+        where('date', '<=', reportRange.end)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      let allOccurrences: any[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const deptOccurrences = data.occurrences || [];
+        const deptId = data.departmentId;
+        
+        if (reportDept === 'all' || deptId === reportDept) {
+          deptOccurrences.forEach((occ: any) => {
+            if (reportSeverity === 'all' || occ.severity === reportSeverity) {
+              allOccurrences.push({
+                date: data.date,
+                department: DEPARTMENTS[deptId as DepartmentId]?.name || deptId,
+                title: occ.title,
+                description: occ.description,
+                severity: occ.severity,
+                time: new Date(occ.timestamp).toLocaleTimeString()
+              });
+            }
+          });
+        }
+      });
+
+      if (allOccurrences.length === 0) {
+        alert("Nenhuma ocorrência encontrada para os filtros selecionados.");
+        return;
+      }
+
+      // Sort by date and time
+      allOccurrences.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+      // Convert to CSV
+      const headers = ['Data', 'Departamento', 'Título', 'Descrição', 'Gravidade', 'Hora'];
+      const csvRows = [
+        headers.join(';'),
+        ...allOccurrences.map(row => 
+          [
+            row.date, 
+            row.department, 
+            `"${(row.title || '').replace(/"/g, '""')}"`, 
+            `"${(row.description || '').replace(/"/g, '""')}"`, 
+            row.severity, 
+            row.time
+          ].join(';')
+        )
+      ];
+      
+      const csvContent = "\uFEFF" + csvRows.join('\n'); // Adding BOM for Excel
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `relatorio_ocorrencias_${reportRange.start}_a_${reportRange.end}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+      alert("Erro ao gerar relatório. Tente novamente.");
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -1823,6 +1933,81 @@ function SettingsView() {
           </div>
         </section>
       </div>
+
+      <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
+        <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
+          <FileText size={24} className="text-blue-600 dark:text-blue-400" />
+          Relatórios de Ocorrências
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-neutral-50 dark:bg-neutral-800 p-6 rounded-2xl">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-2">Período</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input 
+                  type="date"
+                  value={reportRange.start}
+                  onChange={(e) => setReportRange({...reportRange, start: e.target.value})}
+                  className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                />
+                <input 
+                  type="date"
+                  value={reportRange.end}
+                  onChange={(e) => setReportRange({...reportRange, end: e.target.value})}
+                  className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-2">Departamento</label>
+              <select 
+                value={reportDept}
+                onChange={(e) => setReportDept(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+              >
+                <option value="all">Todos os Departamentos</option>
+                {Object.values(DEPARTMENTS).map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-2">Gravidade</label>
+              <select 
+                value={reportSeverity}
+                onChange={(e) => setReportSeverity(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+              >
+                <option value="all">Todas as Gravidades</option>
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Crítica</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-end">
+            <button 
+              onClick={exportOccurrencesReport}
+              disabled={isGeneratingReport}
+              className="flex items-center justify-center gap-3 w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
+            >
+              {isGeneratingReport ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <FileDown size={20} />
+              )}
+              Exportar Relatório (CSV)
+            </button>
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-3 text-center">
+              O arquivo será gerado com separador de ponto e vírgula (;), compatível com Excel e Google Sheets.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <OccurrenceHistory />
     </div>
