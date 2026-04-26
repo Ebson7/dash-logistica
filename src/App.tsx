@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, getDocs, setDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { UserProfile, DepartmentId } from './types';
+import { UserProfile, DepartmentId, ReceivingAppointment } from './types';
 import { DEPARTMENTS, VEHICLE_TYPES } from './constants';
 import { 
   LayoutDashboard, 
@@ -48,7 +48,8 @@ import {
   Moon,
   Sun,
   FileDown,
-  FileText
+  FileText,
+  Settings2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -1406,8 +1407,395 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
   );
 }
 
+function ReceivingSchedule() {
+  const [appointments, setAppointments] = useState<ReceivingAppointment[]>([]);
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    staff: '',
+    requester: '',
+    contact: '',
+    supplierOrder: '',
+    vehicle: '',
+    pallets: 0,
+    scheduledTime: '',
+    observation: '',
+    status: 'pending' as ReceivingAppointment['status'],
+    totalValue: 0,
+    paymentTerm: ''
+  });
+
+  useEffect(() => {
+    const q = query(collection(db, 'appointments'));
+    return onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ReceivingAppointment));
+      // Sort in memory to avoid needing composite indexes
+      data.sort((a, b) => {
+        const dateCompare = b.date.localeCompare(a.date);
+        if (dateCompare !== 0) return dateCompare;
+        return a.scheduledTime.localeCompare(b.scheduledTime);
+      });
+      setAppointments(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'appointments');
+    });
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (editingId) {
+        await setDoc(doc(db, 'appointments', editingId), {
+          ...formData,
+          createdAt: appointments.find(a => a.id === editingId)?.createdAt || Date.now()
+        }, { merge: true });
+        setEditingId(null);
+      } else {
+        await addDoc(collection(db, 'appointments'), {
+          ...formData,
+          createdAt: Date.now()
+        });
+        setFilterDate(formData.date);
+      }
+      setIsAdding(false);
+      resetForm();
+    } catch (error) {
+      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'appointments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      staff: '',
+      requester: '',
+      contact: '',
+      supplierOrder: '',
+      vehicle: '',
+      pallets: 0,
+      scheduledTime: '',
+      observation: '',
+      status: 'pending',
+      totalValue: 0,
+      paymentTerm: ''
+    });
+  };
+
+  const startEdit = (a: ReceivingAppointment) => {
+    setFormData({
+      date: a.date,
+      staff: a.staff,
+      requester: a.requester,
+      contact: a.contact,
+      supplierOrder: a.supplierOrder,
+      vehicle: a.vehicle,
+      pallets: a.pallets,
+      scheduledTime: a.scheduledTime,
+      observation: a.observation,
+      status: a.status,
+      totalValue: a.totalValue,
+      paymentTerm: a.paymentTerm
+    });
+    setEditingId(a.id);
+    setIsAdding(true);
+  };
+
+  const updateStatus = async (id: string, status: ReceivingAppointment['status']) => {
+    try {
+      await setDoc(doc(db, 'appointments', id), { status }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'appointments');
+    }
+  };
+
+  const deleteAppointment = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta agenda?')) return;
+    try {
+      await setDoc(doc(db, 'appointments', id), { deleted: true }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'appointments');
+    }
+  };
+
+  const exportToCSV = () => {
+    const headers = [
+      'DATA', 'COLABORADOR', 'SOLICITANTE', 'CONTATO', 'PEDIDO FORNECEDOR', 
+      'VEÍCULO', 'PALET', 'AGENDADO', 'OBSERVAÇÃO', 'STATUS', 
+      'VALOR TOTAL DA CARGA', 'PRAZO PAGAMENTO BOLETO'
+    ];
+    
+    const rows = appointments.filter(a => a.date === filterDate).map(a => [
+      a.date,
+      a.staff,
+      a.requester,
+      a.contact,
+      a.supplierOrder,
+      a.vehicle,
+      a.pallets,
+      a.scheduledTime,
+      a.observation,
+      a.status,
+      a.totalValue,
+      a.paymentTerm
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.join(';'))
+    ].join('\n');
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `agenda_recebimento_${filterDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const filteredAppointments = appointments.filter(a => !a.deleted && a.date === filterDate);
+  
+  // Calculate conflicts
+  const timeCounts = filteredAppointments.reduce((acc: any, curr) => {
+    acc[curr.scheduledTime] = (acc[curr.scheduledTime] || 0) + 1;
+    return acc;
+  }, {});
+
+  const hasTimeConflict = (time: string) => timeCounts[time] > 1;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
+          <Calendar size={24} className="text-blue-600" />
+          Agenda de Recebimento
+        </h3>
+        <div className="flex items-center gap-2">
+          <input 
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none"
+          />
+          <button 
+            onClick={() => {
+              resetForm();
+              setEditingId(null);
+              setIsAdding(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-all text-sm"
+          >
+            <Plus size={18} />
+            Agendar
+          </button>
+          <button 
+            onClick={exportToCSV}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all text-sm"
+          >
+            <FileDown size={18} />
+            Exportar
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-white dark:bg-neutral-900 p-8 rounded-3xl border border-blue-100 dark:border-blue-900/30 overflow-hidden shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="font-bold text-neutral-900 dark:text-white">
+                {editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
+              </h4>
+              <button 
+                onClick={() => {
+                  setIsAdding(false);
+                  setEditingId(null);
+                }} 
+                className="text-neutral-400 hover:text-neutral-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {hasTimeConflict(formData.scheduledTime) && formData.scheduledTime && (
+              <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-2xl flex items-center gap-3 text-amber-700 dark:text-amber-400 text-sm font-bold animate-pulse">
+                <AlertCircle size={20} />
+                Atenção: Já existe um agendamento para este horário ({formData.scheduledTime}).
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Data</label>
+                <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Agendado (Hora)</label>
+                <input required type="time" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Colaborador</label>
+                <input required type="text" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Solicitante</label>
+                <input required type="text" value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Contato</label>
+                <input required type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Pedido Fornecedor</label>
+                <input required type="text" value={formData.supplierOrder} onChange={e => setFormData({...formData, supplierOrder: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Veículo</label>
+                <input required type="text" value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Palets</label>
+                <input required type="number" value={formData.pallets} onChange={e => setFormData({...formData, pallets: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Valor Total Carga</label>
+                <input required type="number" step="0.01" value={formData.totalValue} onChange={e => setFormData({...formData, totalValue: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Prazo Pagamento Boleto</label>
+                <input required type="text" value={formData.paymentTerm} onChange={e => setFormData({...formData, paymentTerm: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Observação</label>
+                <textarea value={formData.observation} onChange={e => setFormData({...formData, observation: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none min-h-[80px]" />
+              </div>
+              <div className="md:col-span-3 flex justify-end gap-3 mt-4">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setIsAdding(false);
+                    setEditingId(null);
+                  }} 
+                  className="px-6 py-2 rounded-xl font-bold text-neutral-500 hover:bg-neutral-100 transition-all font-sans"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" disabled={loading} className="bg-blue-600 text-white px-8 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none flex items-center gap-2 font-sans">
+                  {loading && <Loader2 className="animate-spin" size={18} />}
+                  {editingId ? 'Salvar Alterações' : 'Salvar Agendamento'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 uppercase text-[10px] font-bold">
+              <tr>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Horário</th>
+                <th className="px-6 py-4">Pedido/Fornecedor</th>
+                <th className="px-6 py-4">Veículo</th>
+                <th className="px-6 py-4">Solicitante</th>
+                <th className="px-6 py-4">Palets</th>
+                <th className="px-6 py-4">Valor</th>
+                <th className="px-6 py-4">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+              {filteredAppointments.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-neutral-400 dark:text-neutral-500 italic">Nenhum agendamento para esta data.</td>
+                </tr>
+              ) : (
+                filteredAppointments.map(a => {
+                  const conflict = hasTimeConflict(a.scheduledTime);
+                  return (
+                    <tr key={a.id} className={`hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors ${conflict ? 'bg-amber-50/30' : ''}`}>
+                      <td className="px-6 py-4">
+                        <select 
+                          value={a.status} 
+                          onChange={(e: any) => updateStatus(a.id, e.target.value)}
+                          className={`text-[10px] font-bold uppercase px-2 py-1 rounded-lg outline-none border-none ${
+                            a.status === 'received' ? 'bg-emerald-100 text-emerald-600' : 
+                            a.status === 'cancelled' ? 'bg-red-100 text-red-600' : 
+                            'bg-amber-100 text-amber-600'
+                          }`}
+                        >
+                          <option value="pending">Pendente</option>
+                          <option value="received">Recebido</option>
+                          <option value="cancelled">Cancelado</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold dark:text-white">{a.scheduledTime}</span>
+                          {conflict && (
+                            <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg tooltip" title="Conflito de Horário">
+                              <AlertCircle size={14} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold dark:text-white">{a.supplierOrder}</p>
+                        <p className="text-[10px] text-neutral-400">{a.staff}</p>
+                      </td>
+                      <td className="px-6 py-4 dark:text-neutral-300">{a.vehicle}</td>
+                      <td className="px-6 py-4">
+                        <p className="font-medium dark:text-neutral-300">{a.requester}</p>
+                        <p className="text-[10px] text-neutral-400">{a.contact}</p>
+                      </td>
+                      <td className="px-6 py-4 font-bold dark:text-white">{a.pallets}</td>
+                      <td className="px-6 py-4 font-bold dark:text-white whitespace-nowrap">R$ {a.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => startEdit(a)} 
+                            className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                            title="Editar"
+                          >
+                            <Settings2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => deleteAppointment(a.id)} 
+                            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                            title="Excluir"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RecebimentoView() {
   const [settings, setSettings] = useState<any>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'operation' | 'schedule'>('operation');
 
   useEffect(() => {
     return onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
@@ -1417,15 +1805,38 @@ function RecebimentoView() {
 
   const vehicleOptions = settings?.vehicleConfig?.map((t: any) => t.name) || VEHICLE_TYPES;
 
-  return <DepartmentView 
-    departmentId="recebimento" 
-    title="Recebimento" 
-    fields={[
-      { name: 'totalVehicles', label: 'Total de Veículos Previstos', type: 'number' },
-      { name: 'vehiclesReceived', label: 'Veículos Recebidos até o momento', type: 'number' },
-      { name: 'vehiclesByType', label: 'Quantidade por Tipo de Veículo', type: 'counter-list', options: vehicleOptions }
-    ]} 
-  />;
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-4 border-b border-neutral-100 dark:border-neutral-800 p-1">
+        <button 
+          onClick={() => setActiveSubTab('operation')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'operation' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+        >
+          Operação do Dia
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('schedule')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'schedule' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+        >
+          Agenda de Recebimento
+        </button>
+      </div>
+
+      {activeSubTab === 'operation' ? (
+        <DepartmentView 
+          departmentId="recebimento" 
+          title="Recebimento" 
+          fields={[
+            { name: 'totalVehicles', label: 'Total de Veículos Previstos', type: 'number' },
+            { name: 'vehiclesReceived', label: 'Veículos Recebidos até o momento', type: 'number' },
+            { name: 'vehiclesByType', label: 'Quantidade por Tipo de Veículo', type: 'counter-list', options: vehicleOptions }
+          ]} 
+        />
+      ) : (
+        <ReceivingSchedule />
+      )}
+    </div>
+  );
 }
 
 function EstoqueView() {

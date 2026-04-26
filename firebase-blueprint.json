@@ -67,6 +67,28 @@
           }
         }
       }
+    },
+    "ReceivingAppointment": {
+      "title": "ReceivingAppointment",
+      "description": "Appointment for receiving goods",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "staff": { "type": "string" },
+        "requester": { "type": "string" },
+        "contact": { "type": "string" },
+        "supplierOrder": { "type": "string" },
+        "vehicle": { "type": "string" },
+        "pallets": { "type": "number" },
+        "scheduledTime": { "type": "string" },
+        "observation": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "received", "cancelled"] },
+        "totalValue": { "type": "number" },
+        "paymentTerm": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["date", "staff", "requester", "supplierOrder", "vehicle", "scheduledTime"]
     }
   },
   "firestore": {
@@ -81,6 +103,10 @@
     "/settings/global": {
       "schema": "AppSettings",
       "description": "Global settings"
+    },
+    "/appointments/{id}": {
+      "schema": "ReceivingAppointment",
+      "description": "Receiving appointments"
     }
   }
 }

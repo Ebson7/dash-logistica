@@ -41,6 +41,24 @@ export interface AppSettings {
   vehicleConfig?: VehicleTypeConfig[];
 }
 
+export interface ReceivingAppointment {
+  id: string;
+  date: string;
+  staff: string;
+  requester: string;
+  contact: string;
+  supplierOrder: string;
+  vehicle: string;
+  pallets: number;
+  scheduledTime: string;
+  observation: string;
+  status: 'pending' | 'received' | 'cancelled';
+  totalValue: number;
+  paymentTerm: string;
+  createdAt: number;
+  deleted?: boolean;
+}
+
 export interface DailyLog {
   id: string;
   date: string; // YYYY-MM-DD

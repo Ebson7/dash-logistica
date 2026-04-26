@@ -58,5 +58,11 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow read, write: if isAuthenticated();
     }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
   }
 }
