@@ -49,7 +49,8 @@ import {
   Sun,
   FileDown,
   FileText,
-  Settings2
+  Settings2,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -1583,7 +1584,7 @@ function ReceivingSchedule() {
             type="date"
             value={filterDate}
             onChange={(e) => setFilterDate(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none"
+            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
           />
           <button 
             onClick={() => {
@@ -1767,6 +1768,21 @@ function ReceivingSchedule() {
                       <td className="px-6 py-4 font-bold dark:text-white whitespace-nowrap">R$ {a.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1">
+                          {a.observation && (
+                            <div className="relative group">
+                              <button 
+                                className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                title="Ver Observação"
+                              >
+                                <MessageSquare size={16} />
+                              </button>
+                              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 bg-neutral-900 text-white text-[10px] rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 border border-neutral-800">
+                                <p className="font-bold mb-1 uppercase tracking-wider text-neutral-400 text-[8px]">Observação</p>
+                                {a.observation}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-neutral-900"></div>
+                              </div>
+                            </div>
+                          )}
                           <button 
                             onClick={() => startEdit(a)} 
                             className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
