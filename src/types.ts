@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export type DepartmentId = 'estoque' | 'recebimento' | 'romaneio_tarde' | 'romaneio_noturno' | 'veiculos' | 'exp_loja';
 
 export interface Department {
@@ -55,7 +57,7 @@ export interface ReceivingAppointment {
   status: 'pending' | 'received' | 'cancelled';
   totalValue: number;
   paymentTerm: string;
-  createdAt: number;
+  createdAt: number | Timestamp;
   deleted?: boolean;
 }
 

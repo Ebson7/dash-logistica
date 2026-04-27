@@ -29,7 +29,7 @@ service cloud.firestore {
     // Helper Functions
     // ===============================================================
     
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
@@ -41,28 +41,46 @@ service cloud.firestore {
              data.staffPresent >= 0;
     }
 
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
     match /users/{userId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isSignedIn();
     }
 
     match /logs/{logId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidLog(request.resource.data);
-      allow delete: if isAuthenticated();
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidLog(request.resource.data);
+      allow delete: if isSignedIn();
     }
 
     match /settings/{settingId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isSignedIn();
+    }
+
+    function isValidAppointment(data) {
+      return data.date is string &&
+             data.staff is string &&
+             data.requester is string &&
+             data.supplierOrder is string &&
+             data.vehicle is string &&
+             data.scheduledTime is string &&
+             data.pallets is number &&
+             data.totalValue is number &&
+             (data.status == 'pending' || data.status == 'received' || data.status == 'cancelled');
     }
 
     match /appointments/{appointmentId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+                    isValidAppointment(request.resource.data) &&
+                    request.resource.data.createdAt == request.time;
+      allow update: if isSignedIn() && 
+                    (isValidAppointment(request.resource.data) || 
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) || 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted'])));
+      allow delete: if isSignedIn();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
