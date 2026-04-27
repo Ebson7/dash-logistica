@@ -1424,7 +1424,7 @@ function ReceivingSchedule() {
     pallets: 0,
     scheduledTime: '',
     observation: '',
-    status: 'pending' as ReceivingAppointment['status'],
+    status: 'Aguardando' as ReceivingAppointment['status'],
     totalValue: 0,
     paymentTerm: ''
   });
@@ -1482,7 +1482,7 @@ function ReceivingSchedule() {
       pallets: 0,
       scheduledTime: '',
       observation: '',
-      status: 'pending',
+      status: 'Aguardando',
       totalValue: 0,
       paymentTerm: ''
     });
@@ -1639,47 +1639,47 @@ function ReceivingSchedule() {
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Data</label>
-                <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Agendado (Hora)</label>
-                <input required type="time" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="time" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Colaborador</label>
-                <input required type="text" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="text" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Solicitante</label>
-                <input required type="text" value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="text" value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Contato</label>
-                <input required type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Pedido Fornecedor</label>
-                <input required type="text" value={formData.supplierOrder} onChange={e => setFormData({...formData, supplierOrder: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="text" value={formData.supplierOrder} onChange={e => setFormData({...formData, supplierOrder: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Veículo</label>
-                <input required type="text" value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="text" value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Palets</label>
-                <input required type="number" value={formData.pallets} onChange={e => setFormData({...formData, pallets: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="number" value={formData.pallets} onChange={e => setFormData({...formData, pallets: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Valor Total Carga</label>
-                <input required type="number" step="0.01" value={formData.totalValue} onChange={e => setFormData({...formData, totalValue: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="number" step="0.01" value={formData.totalValue} onChange={e => setFormData({...formData, totalValue: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Prazo Pagamento Boleto</label>
-                <input required type="text" value={formData.paymentTerm} onChange={e => setFormData({...formData, paymentTerm: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none" />
+                <input required type="text" value={formData.paymentTerm} onChange={e => setFormData({...formData, paymentTerm: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Observação</label>
-                <textarea value={formData.observation} onChange={e => setFormData({...formData, observation: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm outline-none min-h-[80px]" />
+                <textarea value={formData.observation} onChange={e => setFormData({...formData, observation: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none min-h-[80px]" />
               </div>
               <div className="md:col-span-3 flex justify-end gap-3 mt-4">
                 <button 
@@ -1732,14 +1732,16 @@ function ReceivingSchedule() {
                           value={a.status} 
                           onChange={(e: any) => updateStatus(a.id, e.target.value)}
                           className={`text-[10px] font-bold uppercase px-2 py-1 rounded-lg outline-none border-none ${
-                            a.status === 'received' ? 'bg-emerald-100 text-emerald-600' : 
-                            a.status === 'cancelled' ? 'bg-red-100 text-red-600' : 
+                            a.status === 'Recebido' ? 'bg-emerald-100 text-emerald-600' : 
+                            a.status === 'Descarregando' ? 'bg-blue-100 text-blue-600' : 
+                            a.status === 'Cancelado' ? 'bg-red-100 text-red-600' : 
                             'bg-amber-100 text-amber-600'
                           }`}
                         >
-                          <option value="pending">Pendente</option>
-                          <option value="received">Recebido</option>
-                          <option value="cancelled">Cancelado</option>
+                          <option value="Aguardando">Aguardando</option>
+                          <option value="Descarregando">Descarregando</option>
+                          <option value="Recebido">Recebido</option>
+                          <option value="Cancelado">Cancelado</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
