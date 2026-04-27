@@ -103,6 +103,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
+  alert(`Erro na operação ${operationType} em ${path}: ${errInfo.error}`);
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -1432,6 +1433,7 @@ function ReceivingSchedule() {
   useEffect(() => {
     const q = query(collection(db, 'appointments'));
     return onSnapshot(q, (snapshot) => {
+      console.log(`Received ${snapshot.docs.length} appointments from Firestore`);
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ReceivingAppointment));
       // Sort in memory to avoid needing composite indexes
       data.sort((a, b) => {
@@ -1447,6 +1449,7 @@ function ReceivingSchedule() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting form data:", formData);
     setLoading(true);
     try {
       if (editingId) {
@@ -1462,6 +1465,7 @@ function ReceivingSchedule() {
         });
         setFilterDate(formData.date);
       }
+      alert("Agendamento salvo com sucesso!");
       setIsAdding(false);
       resetForm();
     } catch (error) {
@@ -1562,6 +1566,10 @@ function ReceivingSchedule() {
   };
 
   const filteredAppointments = appointments.filter(a => !a.deleted && a.date === filterDate);
+  console.log(`Filtering for ${filterDate}: found ${filteredAppointments.length} out of ${appointments.length} total`);
+  if (appointments.length > 0 && filteredAppointments.length === 0) {
+    console.log("Appointments dates available:", [...new Set(appointments.map(a => a.date))]);
+  }
   
   // Calculate conflicts
   const timeCounts = filteredAppointments.reduce((acc: any, curr) => {
