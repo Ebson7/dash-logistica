@@ -609,15 +609,15 @@ import {
 
 function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue-600", isTVMode }: any) {
   return (
-    <div className={`bg-white dark:bg-neutral-900 ${isTVMode ? 'p-8' : 'p-4 sm:p-5 md:p-6'} rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 min-w-0 transition-all`}>
+    <div className={`bg-white dark:bg-neutral-900 ${isTVMode ? 'p-6' : 'p-4 sm:p-5 md:p-6'} rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 min-w-0 transition-all`}>
       <div className="flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-2 min-w-0 flex-1">
-        <div className={`${isTVMode ? 'w-16 h-16 mb-2' : 'w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12'} rounded-xl flex items-center justify-center shrink-0 ${colorClass} dark:bg-opacity-10`}>
-          <Icon className={isTVMode ? 'w-8 h-8' : 'w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6'} />
+        <div className={`${isTVMode ? 'w-12 h-12 mb-1' : 'w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12'} rounded-xl flex items-center justify-center shrink-0 ${colorClass} dark:bg-opacity-10`}>
+          <Icon className={isTVMode ? 'w-6 h-6' : 'w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6'} />
         </div>
-        <p className={`text-neutral-500 dark:text-neutral-400 ${isTVMode ? 'text-sm' : 'text-[9px] sm:text-[10px] md:text-xs'} font-bold uppercase tracking-wider leading-tight line-clamp-2 sm:line-clamp-none`}>{title}</p>
+        <p className={`text-neutral-500 dark:text-neutral-400 ${isTVMode ? 'text-[9px]' : 'text-[9px] sm:text-[10px] md:text-xs'} font-bold uppercase tracking-wider leading-tight line-clamp-2 sm:line-clamp-none`}>{title}</p>
       </div>
       <div className="text-right sm:shrink-0 w-full sm:w-auto flex justify-end">
-        <p className={`font-black text-neutral-900 dark:text-white ${isTVMode ? 'text-6xl' : 'text-xl sm:text-2xl md:text-4xl'}`}>{value}</p>
+        <p className={`font-black text-neutral-900 dark:text-white ${isTVMode ? 'text-2xl' : 'text-xl sm:text-2xl md:text-4xl'}`}>{value}</p>
       </div>
     </div>
   );
@@ -687,8 +687,8 @@ function NewsTicker({ occurrences, isTVMode }: { occurrences: any[], isTVMode?: 
     : "MARSIL LOG NEWS: OPERAÇÃO NORMAL - SEM OCORRÊNCIAS NO MOMENTO";
 
   return (
-    <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap sticky top-0 z-50 shadow-lg border-b border-yellow-400/20 ${
-      isTVMode ? 'py-6 w-full' : 'py-2 sm:py-3 -mx-4 md:-mx-10 -mt-4 md:-mt-10 mb-6 md:mb-10'
+    <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap z-50 shadow-lg border-b border-yellow-400/20 ${
+      isTVMode ? 'py-2 w-full relative' : 'py-2 sm:py-3 -mx-4 md:-mx-10 -mt-4 md:-mt-10 mb-6 md:mb-10 sticky top-0'
     }`}>
       <motion.div
         animate={{ x: ["0%", "-100%"] }}
@@ -699,7 +699,7 @@ function NewsTicker({ occurrences, isTVMode }: { occurrences: any[], isTVMode?: 
         }}
         className="inline-block pl-[100%]"
       >
-        <span className={`${isTVMode ? 'text-3xl' : 'text-sm sm:text-lg'} font-bold font-mono tracking-wider uppercase`}>
+        <span className={`${isTVMode ? 'text-xl' : 'text-sm sm:text-lg'} font-bold font-mono tracking-wider uppercase`}>
           {tickerText} • {tickerText} • {tickerText}
         </span>
       </motion.div>
@@ -909,13 +909,13 @@ function DashboardView() {
 
           <div className={`grid gap-3 sm:gap-4 ${isTVMode ? 'grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'}`}>
             {chartData.map((dept, idx) => (
-              <div key={idx} className={`bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center transition-all ${isTVMode ? 'p-6 rounded-3xl' : 'p-3 sm:p-4 rounded-2xl'}`}>
-                <span className={`font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1 ${isTVMode ? 'text-sm' : 'text-[9px] sm:text-[10px]'}`}>{dept.name}</span>
+              <div key={idx} className={`bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center transition-all ${isTVMode ? 'p-3 rounded-2xl' : 'p-3 sm:p-4 rounded-2xl'}`}>
+                <span className={`font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1 ${isTVMode ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'}`}>{dept.name}</span>
                 <div className="flex items-baseline gap-1">
-                  <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-3xl' : 'text-lg sm:text-xl'}`}>{dept.presente}</span>
-                  <span className={`text-neutral-400 dark:text-neutral-500 font-medium ${isTVMode ? 'text-base' : 'text-[10px] sm:text-xs'}`}>/ {dept.total}</span>
+                  <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg sm:text-xl'}`}>{dept.presente}</span>
+                  <span className={`text-neutral-400 dark:text-neutral-500 font-medium ${isTVMode ? 'text-[9px]' : 'text-[10px] sm:text-xs'}`}>/ {dept.total}</span>
                 </div>
-                <div className={`w-full bg-neutral-100 dark:bg-neutral-800 rounded-full mt-3 overflow-hidden ${isTVMode ? 'h-3' : 'h-1 sm:h-1.5'}`}>
+                <div className={`w-full bg-neutral-100 dark:bg-neutral-800 rounded-full mt-3 overflow-hidden ${isTVMode ? 'h-2' : 'h-1 sm:h-1.5'}`}>
                   <div 
                     className={`h-full transition-all duration-500 ${dept.percent < 70 ? 'bg-red-500' : dept.percent < 90 ? 'bg-orange-500' : 'bg-emerald-500'}`}
                     style={{ width: `${dept.percent}%` }}
@@ -926,19 +926,19 @@ function DashboardView() {
           </div>
 
           <div className={`grid gap-8 ${isTVMode ? 'grid-cols-2' : 'grid-cols-1 xl:grid-cols-2'}`}>
-            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-10' : 'p-4 sm:p-6 md:p-8'}`}>
-              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-2xl' : 'text-lg'}`}>Comparecimento (%)</h3>
-              <div className={isTVMode ? 'h-[500px]' : 'h-64 sm:h-72 md:h-80'}>
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
+              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg'}`}>Comparecimento (%)</h3>
+              <div className={isTVMode ? 'h-[400px]' : 'h-64 sm:h-72 md:h-80'}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 10}} interval={0} angle={-15} textAnchor="end" />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 10}} unit="%" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} interval={0} angle={-15} textAnchor="end" />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} unit="%" />
                     <Tooltip 
                       cursor={{fill: '#f9fafb'}}
-                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '16px' : '11px'}}
+                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '12px' : '11px'}}
                     />
-                    <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={isTVMode ? 80 : 30}>
+                    <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={isTVMode ? 60 : 30}>
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.percent < 70 ? '#ef4444' : entry.percent < 90 ? '#f59e0b' : '#10b981'} />
                       ))}
@@ -948,19 +948,19 @@ function DashboardView() {
               </div>
             </div>
 
-            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-10' : 'p-4 sm:p-6 md:p-8'}`}>
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
               <div className="flex justify-between items-start mb-6">
-                <h3 className={`font-bold dark:text-white ${isTVMode ? 'text-2xl' : 'text-base sm:text-lg'}`}>Ocupação Estoque</h3>
-                <div className={`flex items-center bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50 ${isTVMode ? 'px-8 py-4 gap-6' : 'px-3 py-1.5 sm:px-4 sm:py-2 gap-2 sm:gap-3'}`}>
-                  <Package className={`text-amber-600 dark:text-amber-400 ${isTVMode ? 'w-10 h-10' : 'w-4 h-4 sm:w-5 h-5'}`} />
+                <h3 className={`font-bold dark:text-white ${isTVMode ? 'text-xl' : 'text-base sm:text-lg'}`}>Ocupação Estoque</h3>
+                <div className={`flex items-center bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50 ${isTVMode ? 'px-6 py-3 gap-4' : 'px-3 py-1.5 sm:px-4 sm:py-2 gap-2 sm:gap-3'}`}>
+                  <Package className={`text-amber-600 dark:text-amber-400 ${isTVMode ? 'w-8 h-8' : 'w-4 h-4 sm:w-5 h-5'}`} />
                   <div className="text-right">
-                    <p className={`font-bold text-amber-600 dark:text-amber-500 uppercase leading-none ${isTVMode ? 'text-sm mb-1' : 'text-[9px] sm:text-[10px]'}`}>Palets no Chão</p>
-                    <p className={`font-black text-amber-700 dark:text-amber-300 leading-none ${isTVMode ? 'text-4xl' : 'text-lg sm:text-xl'}`}>{paletsNoChao}</p>
+                    <p className={`font-bold text-amber-600 dark:text-amber-500 uppercase leading-none ${isTVMode ? 'text-xs mb-1' : 'text-[9px] sm:text-[10px]'}`}>Palets no Chão</p>
+                    <p className={`font-black text-amber-700 dark:text-amber-300 leading-none ${isTVMode ? 'text-2xl' : 'text-lg sm:text-xl'}`}>{paletsNoChao}</p>
                   </div>
                 </div>
               </div>
-              <div className={`flex flex-col items-center justify-center ${isTVMode ? 'h-[500px]' : 'h-64 sm:h-72 md:h-80'}`}>
-                <div className={`relative ${isTVMode ? 'w-80 h-80' : 'w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48'}`}>
+              <div className={`flex flex-col items-center justify-center ${isTVMode ? 'h-[400px]' : 'h-64 sm:h-72 md:h-80'}`}>
+                <div className={`relative ${isTVMode ? 'w-64 h-64' : 'w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48'}`}>
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 192 192">
                     <circle
                       cx="96"
@@ -1000,19 +1000,19 @@ function DashboardView() {
               </div>
             </div>
 
-            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-10' : 'p-4 sm:p-6 md:p-8'}`}>
-              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-2xl' : 'text-lg'}`}>Métricas de Inventário</h3>
-              <div className={isTVMode ? 'h-[500px]' : 'h-64 sm:h-72 md:h-80'}>
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
+              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg'}`}>Métricas de Inventário</h3>
+              <div className={isTVMode ? 'h-[400px]' : 'h-64 sm:h-72 md:h-80'}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={inventoryChartData} layout="vertical" margin={{ left: isTVMode ? 40 : 10, right: 30, top: 20, bottom: 20 }}>
+                  <BarChart data={inventoryChartData} layout="vertical" margin={{ left: isTVMode ? 30 : 10, right: 30, top: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 10}} />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 16 : 10}} width={isTVMode ? 200 : 100} />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} width={isTVMode ? 150 : 100} />
                     <Tooltip 
                       cursor={{fill: '#f9fafb'}}
-                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '16px' : '11px'}}
+                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '12px' : '11px'}}
                     />
-                    <Bar dataKey="value" name="Quantidade" radius={[0, 6, 6, 0]} barSize={isTVMode ? 60 : 25}>
+                    <Bar dataKey="value" name="Quantidade" radius={[0, 6, 6, 0]} barSize={isTVMode ? 40 : 25}>
                       {inventoryChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
