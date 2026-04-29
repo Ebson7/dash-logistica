@@ -687,13 +687,13 @@ function NewsTicker({ occurrences, isTVMode }: { occurrences: any[], isTVMode?: 
     : "MARSIL LOG NEWS: OPERAÇÃO NORMAL - SEM OCORRÊNCIAS NO MOMENTO";
 
   return (
-    <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap z-50 shadow-lg border-b border-yellow-400/20 ${
-      isTVMode ? 'py-2 w-full relative' : 'py-2 sm:py-3 -mx-4 md:-mx-10 -mt-4 md:-mt-10 mb-6 md:mb-10 sticky top-0'
+    <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap shadow-lg border-b border-yellow-400/20 ${
+      isTVMode ? 'py-3 w-full sticky top-0 z-[120]' : 'py-2 sm:py-3 -mx-4 md:-mx-10 -mt-4 md:-mt-10 mb-6 md:mb-10 sticky top-0 z-50'
     }`}>
       <motion.div
         animate={{ x: ["0%", "-100%"] }}
         transition={{ 
-          duration: 180 + (tickerText.length / 2), 
+          duration: 40 + (tickerText.length / 10), 
           repeat: Infinity, 
           ease: "linear" 
         }}
@@ -890,7 +890,7 @@ function DashboardView() {
             {isTVMode && (
               <button 
                 onClick={() => setIsTVMode(false)}
-                className="fixed top-12 right-12 z-[110] bg-neutral-900/50 hover:bg-neutral-900 text-white p-4 rounded-full transition-all shadow-2xl backdrop-blur-md"
+                className="fixed top-12 right-12 z-[150] bg-neutral-900/50 hover:bg-neutral-900 text-white p-4 rounded-full transition-all shadow-2xl backdrop-blur-md"
                 title="Sair do Modo TV"
               >
                 <X size={32} />
