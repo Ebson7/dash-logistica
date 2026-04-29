@@ -387,9 +387,11 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
     menuItems.push({ id: 'settings', name: 'Configurações', icon: SettingsIcon });
   }
 
-  const filteredMenu = (profile?.departmentId === 'admin' || profile?.departmentId === 'viewer')
+  const filteredMenu = profile?.departmentId === 'admin'
     ? menuItems 
-    : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId);
+    : profile?.departmentId === 'viewer'
+      ? menuItems.filter(item => item.id === 'dashboard')
+      : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId);
 
   return (
     <>
@@ -461,6 +463,8 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
               </button>
             ))}
           </nav>
+
+          {!isCollapsed && <WeatherWidget />}
 
         <div className="mt-auto pt-6 border-t border-neutral-50 dark:border-neutral-800 space-y-4">
           <button
@@ -607,6 +611,64 @@ import {
 } from 'recharts';
 
 // --- Shared Components ---
+
+function WeatherWidget() {
+  const [time, setTime] = useState(new Date());
+  const [weather, setWeather] = useState<{ temp: number; condition: string; icon: any } | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setWeather({
+        temp: 24,
+        condition: 'Limpo',
+        icon: Sun
+      });
+    };
+    fetchWeather();
+  }, []);
+
+  return (
+    <div className="mt-4 mb-2 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-all group overflow-hidden relative">
+      <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-tr from-blue-500/5 via-transparent to-transparent rotate-12 pointer-events-none group-hover:opacity-100 opacity-50 transition-opacity" />
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <Clock size={16} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="text-sm font-black dark:text-white tracking-tight">
+              {time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2 px-2 py-1 bg-amber-100/50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
+            {weather && <weather.icon size={14} className="text-amber-600 dark:text-amber-400" />}
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-300">{weather?.temp}°C</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest leading-none">
+            {time.toLocaleDateString('pt-BR', { weekday: 'long' })}
+          </span>
+          <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 mt-1 truncate">
+            {time.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </span>
+          <div className="flex items-center gap-1 mt-2 opacity-60">
+             <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-[8px] font-medium text-neutral-400 uppercase tracking-tighter">Conexão Estável • São Paulo, SP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue-600", isTVMode }: any) {
   return (

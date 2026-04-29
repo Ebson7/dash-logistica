@@ -43,6 +43,13 @@ export const DEPARTMENTS: Record<DepartmentId, Department> = {
     icon: 'ClipboardList',
     roles: ['Separador', 'Conferente de Carga', 'Auxiliar de Expedição'],
   },
+  viewer: {
+    id: 'viewer',
+    name: 'Visualizador',
+    totalStaff: 0,
+    icon: 'Monitor',
+    roles: [],
+  },
 };
 
 export const VEHICLE_TYPES = [
