@@ -7,7 +7,7 @@
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "departmentId": { "type": "string", "enum": ["estoque", "recebimento", "romaneio", "veiculos", "admin"] },
+        "departmentId": { "type": "string", "enum": ["estoque", "recebimento", "romaneio", "veiculos", "admin", "viewer"] },
         "displayName": { "type": "string" }
       },
       "required": ["uid", "email", "departmentId"]

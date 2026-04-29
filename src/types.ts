@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type DepartmentId = 'estoque' | 'recebimento' | 'romaneio_tarde' | 'romaneio_noturno' | 'veiculos' | 'exp_loja';
+export type DepartmentId = 'estoque' | 'recebimento' | 'romaneio_tarde' | 'romaneio_noturno' | 'veiculos' | 'exp_loja' | 'viewer';
 
 export interface Department {
   id: DepartmentId;

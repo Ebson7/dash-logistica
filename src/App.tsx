@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             uid: firebaseUser.uid,
             email: 'shared@logistica.com',
             departmentId: savedDept,
-            displayName: savedDept === 'admin' ? 'Administrador' : (DEPARTMENTS[savedDept as DepartmentId]?.name || 'Colaborador'),
+            displayName: savedDept === 'admin' ? 'Administrador' : (savedDept === 'viewer' ? 'Visualizador' : (DEPARTMENTS[savedDept as DepartmentId]?.name || 'Colaborador')),
           });
         }
       } else {
@@ -248,14 +248,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Get passwords from Firestore
       const authDoc = await getDoc(doc(db, 'settings', 'auth'));
-      const passwords = authDoc.exists() ? authDoc.data() : { admin: 'admin123', user: 'user123' };
+      const passwords = authDoc.exists() ? authDoc.data() : { admin: 'admin123', user: 'user123', viewer: 'viewer123' };
       
       // Initialize if not exists
       if (!authDoc.exists()) {
         await setDoc(doc(db, 'settings', 'auth'), passwords);
       }
 
-      const correctPassword = departmentId === 'admin' ? passwords.admin : passwords.user;
+      const correctPassword = departmentId === 'admin' ? passwords.admin : (departmentId === 'viewer' ? (passwords.viewer || 'viewer123') : passwords.user);
 
       if (password === correctPassword) {
         localStorage.setItem('selected_dept', departmentId);
@@ -263,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           uid: auth.currentUser?.uid || 'anonymous',
           email: 'shared@logistica.com',
           departmentId: departmentId,
-          displayName: departmentId === 'admin' ? 'Administrador' : (DEPARTMENTS[departmentId as DepartmentId]?.name || 'Colaborador'),
+          displayName: departmentId === 'admin' ? 'Administrador' : (departmentId === 'viewer' ? 'Visualizador' : (DEPARTMENTS[departmentId as DepartmentId]?.name || 'Colaborador')),
         });
       } else {
         await signOut(auth);
@@ -333,6 +333,7 @@ function LoginPage() {
               className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
               <option value="admin">Administrador</option>
+              <option value="viewer">Visualizador (Somente Leitura)</option>
               {Object.values(DEPARTMENTS).map(d => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
@@ -386,7 +387,7 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
     menuItems.push({ id: 'settings', name: 'Configurações', icon: SettingsIcon });
   }
 
-  const filteredMenu = profile?.departmentId === 'admin' 
+  const filteredMenu = (profile?.departmentId === 'admin' || profile?.departmentId === 'viewer')
     ? menuItems 
     : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId);
 
@@ -1118,6 +1119,7 @@ function DashboardView() {
 
 function DepartmentView({ departmentId, title, fields }: { departmentId: DepartmentId, title: string, fields: any[] }) {
   const { profile } = useAuth();
+  const isViewer = profile?.departmentId === 'viewer';
   const [settings, setSettings] = useState<any>(null);
   const [staffPresent, setStaffPresent] = useState(0);
   const [staffByRole, setStaffByRole] = useState<Record<string, number>>({});
@@ -1240,8 +1242,9 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                   <input 
                     type="number" 
                     value={staffPresent}
+                    disabled={isViewer}
                     onChange={(e) => setStaffPresent(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-2">Total do departamento: {totalStaff}</p>
                 </div>
@@ -1256,8 +1259,9 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                       <input 
                         type="number"
                         value={staffByRole[role] || 0}
+                        disabled={isViewer}
                         onChange={(e) => setStaffByRole({...staffByRole, [role]: parseInt(e.target.value)})}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                   ))}
@@ -1274,8 +1278,9 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                         <input 
                           type="number" 
                           value={extraData[field.name] || 0}
+                          disabled={isViewer}
                           onChange={(e) => setExtraData({...extraData, [field.name]: parseInt(e.target.value)})}
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       ) : field.type === 'multiselect' ? (
                         <div className="flex flex-wrap gap-2">
@@ -1283,6 +1288,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                             <button
                               key={opt}
                               type="button"
+                              disabled={isViewer}
                               onClick={() => {
                                 const current = extraData[field.name] || [];
                                 const next = current.includes(opt) ? current.filter((i: string) => i !== opt) : [...current, opt];
@@ -1292,7 +1298,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                                 (extraData[field.name] || []).includes(opt)
                                   ? 'bg-blue-600 text-white'
                                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                              }`}
+                              } disabled:opacity-60 disabled:cursor-not-allowed`}
                             >
                               {opt}
                             </button>
@@ -1306,6 +1312,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                               <input 
                                 type="number"
                                 value={(extraData[field.name] || {})[opt] || 0}
+                                disabled={isViewer}
                                 onChange={(e) => {
                                   const current = extraData[field.name] || {};
                                   const val = parseInt(e.target.value) || 0;
@@ -1320,7 +1327,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                                   
                                   setExtraData(nextExtraData);
                                 }}
-                                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                               />
                             </div>
                           ))}
@@ -1331,52 +1338,56 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none">
-                Salvar Dados do Dia
-              </button>
+              {!isViewer && (
+                <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none">
+                  Salvar Dados do Dia
+                </button>
+              )}
             </form>
           </section>
 
-          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
-              <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
-              Registrar Ocorrência
-            </h3>
-            <div className="space-y-4">
-              <input 
-                type="text"
-                placeholder="Título da ocorrência (ex: Atraso de Veículo)"
-                value={occurrenceTitle}
-                onChange={(e) => setOccurrenceTitle(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-              />
-              <textarea 
-                placeholder="Descreva os detalhes..."
-                value={occurrence}
-                onChange={(e) => setOccurrence(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
-              />
-              <div className="flex items-center gap-4">
-                <select 
-                  value={severity}
-                  onChange={(e: any) => setSeverity(e.target.value)}
-                  className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm outline-none"
-                >
-                  <option value="low">Baixa Gravidade</option>
-                  <option value="medium">Média Gravidade</option>
-                  <option value="high">Alta Gravidade</option>
-                </select>
-                <button 
-                  onClick={addOccurrence}
-                  disabled={!occurrenceTitle || !occurrence}
-                  className="flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2 rounded-xl font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Plus size={18} />
-                  Adicionar
-                </button>
+          {!isViewer && (
+            <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
+                <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
+                Registrar Ocorrência
+              </h3>
+              <div className="space-y-4">
+                <input 
+                  type="text"
+                  placeholder="Título da ocorrência (ex: Atraso de Veículo)"
+                  value={occurrenceTitle}
+                  onChange={(e) => setOccurrenceTitle(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                />
+                <textarea 
+                  placeholder="Descreva os detalhes..."
+                  value={occurrence}
+                  onChange={(e) => setOccurrence(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
+                />
+                <div className="flex items-center gap-4">
+                  <select 
+                    value={severity}
+                    onChange={(e: any) => setSeverity(e.target.value)}
+                    className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm outline-none"
+                  >
+                    <option value="low">Baixa Gravidade</option>
+                    <option value="medium">Média Gravidade</option>
+                    <option value="high">Alta Gravidade</option>
+                  </select>
+                  <button 
+                    onClick={addOccurrence}
+                    disabled={!occurrenceTitle || !occurrence}
+                    className="flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2 rounded-xl font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Plus size={18} />
+                    Adicionar
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
 
         <div className="space-y-8">
@@ -1409,6 +1420,8 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
 }
 
 function ReceivingSchedule() {
+  const { profile } = useAuth();
+  const isViewer = profile?.departmentId === 'viewer';
   const [appointments, setAppointments] = useState<ReceivingAppointment[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1586,17 +1599,19 @@ function ReceivingSchedule() {
             onChange={(e) => setFilterDate(e.target.value)}
             className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
           />
-          <button 
-            onClick={() => {
-              resetForm();
-              setEditingId(null);
-              setIsAdding(true);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-all text-sm"
-          >
-            <Plus size={18} />
-            Agendar
-          </button>
+          {!isViewer && (
+            <button 
+              onClick={() => {
+                resetForm();
+                setEditingId(null);
+                setIsAdding(true);
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-all text-sm"
+            >
+              <Plus size={18} />
+              Agendar
+            </button>
+          )}
           <button 
             onClick={exportToCSV}
             className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all text-sm"
@@ -1731,13 +1746,14 @@ function ReceivingSchedule() {
                       <td className="px-6 py-4">
                         <select 
                           value={a.status} 
+                          disabled={isViewer}
                           onChange={(e: any) => updateStatus(a.id, e.target.value)}
                           className={`text-[10px] font-bold uppercase px-2 py-1 rounded-lg outline-none border-none ${
                             a.status === 'Recebido' ? 'bg-emerald-100 text-emerald-600' : 
                             a.status === 'Descarregando' ? 'bg-blue-100 text-blue-600' : 
                             a.status === 'Cancelado' ? 'bg-red-100 text-red-600' : 
                             'bg-amber-100 text-amber-600'
-                          }`}
+                          } disabled:opacity-80 disabled:cursor-not-allowed`}
                         >
                           <option value="Aguardando">Aguardando</option>
                           <option value="Descarregando">Descarregando</option>
@@ -1783,20 +1799,24 @@ function ReceivingSchedule() {
                               </div>
                             </div>
                           )}
-                          <button 
-                            onClick={() => startEdit(a)} 
-                            className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                            title="Editar"
-                          >
-                            <Settings2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => deleteAppointment(a.id)} 
-                            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                            title="Excluir"
-                          >
-                            <X size={16} />
-                          </button>
+                          {!isViewer && (
+                            <>
+                              <button 
+                                onClick={() => startEdit(a)} 
+                                className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                title="Editar"
+                              >
+                                <Settings2 size={16} />
+                              </button>
+                              <button 
+                                onClick={() => deleteAppointment(a.id)} 
+                                className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                title="Excluir"
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
