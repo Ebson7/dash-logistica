@@ -416,19 +416,19 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         bg-white dark:bg-neutral-900 border-r border-neutral-100 dark:border-neutral-800 flex flex-col h-screen fixed lg:sticky top-0 transition-all duration-300 ease-in-out z-50
       `}>
-        <div className={`p-6 flex flex-col h-full overflow-hidden`}>
-          <div className="flex items-center justify-between mb-10">
+        <div className={`p-5 flex flex-col h-full overflow-hidden`}>
+          <div className="flex items-center justify-between mb-6">
             {!isCollapsed && (
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
-                  <Truck className="text-white w-6 h-6" />
+                <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                  <Truck className="text-white w-5 h-5" />
                 </div>
-                <span className="text-xl font-bold tracking-tight truncate dark:text-white">Marsil Log News</span>
+                <span className="text-lg font-bold tracking-tight truncate dark:text-white">Marsil Log News</span>
               </div>
             )}
             {isCollapsed && (
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mx-auto shrink-0">
-                <Truck className="text-white w-6 h-6" />
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center mx-auto shrink-0">
+                <Truck className="text-white w-5 h-5" />
               </div>
             )}
             <button 
@@ -733,36 +733,29 @@ function WeatherWidget() {
   }, []);
 
   return (
-    <div className="mt-4 mb-2 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-all group overflow-hidden relative">
-      <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-tr from-blue-500/5 via-transparent to-transparent rotate-12 pointer-events-none group-hover:opacity-100 opacity-50 transition-opacity" />
-      
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-2">
+    <div className="mt-4 mb-2 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800 transition-all group overflow-hidden relative">
+      <div className="relative z-10 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Clock size={16} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <span className="text-sm font-black dark:text-white tracking-tight">
+            <Clock size={14} className="text-blue-600 dark:text-blue-400" />
+            <span className="text-xs font-black dark:text-white tracking-tight">
               {time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           
-          <div className="flex items-center gap-2 px-2 py-1 bg-amber-100/50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-900/30">
-            {weather && <weather.icon size={14} className="text-amber-600 dark:text-amber-400" />}
-            <span className="text-xs font-bold text-amber-700 dark:text-amber-300">{weather?.temp}°C</span>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100/50 dark:bg-amber-900/20 rounded-md border border-amber-100 dark:border-amber-900/30">
+            {weather && <weather.icon size={12} className="text-amber-600 dark:text-amber-400" />}
+            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">{weather?.temp}°C</span>
           </div>
         </div>
 
         <div className="flex flex-col">
-          <span className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest leading-none">
-            {time.toLocaleDateString('pt-BR', { weekday: 'long' })}
+          <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest leading-tight truncate">
+            {time.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
           </span>
-          <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 mt-1 truncate">
-            {time.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-          </span>
-          <div className="flex items-center gap-1 mt-2 opacity-60">
+          <div className="flex items-center gap-1 mt-0.5 opacity-60">
              <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[8px] font-medium text-neutral-400 uppercase tracking-tighter">Conexão Estável • São Paulo, SP</span>
+             <span className="text-[7px] font-medium text-neutral-400 uppercase tracking-tight">Marsil Log • SP</span>
           </div>
         </div>
       </div>
