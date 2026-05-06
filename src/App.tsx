@@ -779,7 +779,7 @@ function DashboardView() {
   const [lastOccurrenceId, setLastOccurrenceId] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA');
 
   // Filter States
   const [filterDate, setFilterDate] = useState(today);
@@ -963,7 +963,7 @@ function DashboardView() {
 
           <div className={`grid gap-4 sm:gap-6 ${isTVMode ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6'}`}>
             <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} isTVMode={isTVMode} />
-            <StatCard title={`Veículos Recebidos (${new Date(filterDate).toLocaleDateString('pt-BR')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" isTVMode={isTVMode} />
+            <StatCard title={`Veículos Recebidos (${filterDate.split('-').reverse().join('/')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" isTVMode={isTVMode} />
             <StatCard title="Palets Previstos" value={totalPaletsPrevistos} icon={Package} colorClass="bg-amber-50 text-amber-600" isTVMode={isTVMode} />
             <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" isTVMode={isTVMode} />
             <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" isTVMode={isTVMode} />
@@ -1190,7 +1190,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('low');
   const [extraData, setExtraData] = useState<any>({});
   const [logs, setLogs] = useState<any[]>([]);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA');
 
   useEffect(() => {
     const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (doc) => {
@@ -2021,7 +2021,7 @@ function SettingsView() {
   const [newVehicle, setNewVehicle] = useState({ plate: '', model: '', type: '' });
   const [newType, setNewType] = useState({ name: '', palletCapacity: 0 });
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA');
   const [reportRange, setReportRange] = useState({ start: today, end: today });
   const [reportDept, setReportDept] = useState('all');
   const [reportSeverity, setReportSeverity] = useState('all');
