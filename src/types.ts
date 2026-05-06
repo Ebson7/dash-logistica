@@ -46,10 +46,12 @@ export interface AppSettings {
 export interface ReceivingAppointment {
   id: string;
   date: string;
+  creationDate: string;
   staff: string;
   requester: string;
   contact: string;
-  supplierOrder: string;
+  orderNumber: string;
+  supplier: string;
   vehicle: string;
   pallets: number;
   scheduledTime: string;

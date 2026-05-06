@@ -75,20 +75,32 @@
       "properties": {
         "id": { "type": "string" },
         "date": { "type": "string" },
+        "creationDate": { "type": "string" },
         "staff": { "type": "string" },
         "requester": { "type": "string" },
         "contact": { "type": "string" },
-        "supplierOrder": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "supplier": { "type": "string" },
         "vehicle": { "type": "string" },
         "pallets": { "type": "number" },
         "scheduledTime": { "type": "string" },
         "observation": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "received", "cancelled"] },
+        "status": { "type": "string", "enum": ["Aguardando", "Descarregando", "Recebido", "Cancelado"] },
         "totalValue": { "type": "number" },
         "paymentTerm": { "type": "string" },
-        "createdAt": { "type": "number" }
+        "createdAt": { "type": "object" }
       },
-      "required": ["date", "staff", "requester", "supplierOrder", "vehicle", "scheduledTime"]
+      "required": ["date", "creationDate", "staff", "requester", "orderNumber", "supplier", "vehicle", "scheduledTime"]
+    },
+    "Presence": {
+      "title": "Presence",
+      "description": "User online presence",
+      "type": "object",
+      "properties": {
+        "lastActive": { "type": "object" },
+        "page": { "type": "string" },
+        "displayName": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -107,6 +119,10 @@
     "/appointments/{id}": {
       "schema": "ReceivingAppointment",
       "description": "Receiving appointments"
+    },
+    "/presence/{uid}": {
+      "schema": "Presence",
+      "description": "User presence"
     }
   }
 }

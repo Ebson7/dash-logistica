@@ -57,9 +57,11 @@ service cloud.firestore {
 
     function isValidAppointment(data) {
       return data.date is string &&
+             data.creationDate is string &&
              data.staff is string &&
              data.requester is string &&
-             data.supplierOrder is string &&
+             data.orderNumber is string &&
+             data.supplier is string &&
              data.vehicle is string &&
              data.scheduledTime is string &&
              data.pallets is number &&
@@ -77,6 +79,11 @@ service cloud.firestore {
                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) || 
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted'])));
       allow delete: if isSignedIn();
+    }
+
+    match /presence/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
     match /{document=**} {

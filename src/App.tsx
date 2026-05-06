@@ -10,7 +10,7 @@ import {
   signOut, 
   User 
 } from 'firebase/auth';
-import { doc, getDoc, getDocs, setDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile, DepartmentId, ReceivingAppointment } from './types';
 import { DEPARTMENTS, VEHICLE_TYPES } from './constants';
@@ -28,6 +28,9 @@ import {
   Filter,
   AlertCircle,
   Plus,
+  CheckCircle,
+  FileDown,
+  X,
   Users,
   Calendar,
   ChevronRight,
@@ -43,11 +46,9 @@ import {
   ArrowRight,
   Clock,
   BellRing,
-  X,
   ExternalLink,
   Moon,
   Sun,
-  FileDown,
   FileText,
   Settings2,
   MessageSquare
@@ -1488,14 +1489,18 @@ function ReceivingSchedule() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [filterType, setFilterType] = useState<'date' | 'creationDate'>('date');
+  const [onlineUsers, setOnlineUsers] = useState(0);
   
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toLocaleDateString('en-CA'),
+    creationDate: new Date().toLocaleDateString('en-CA'),
     staff: '',
     requester: '',
     contact: '',
-    supplierOrder: '',
+    orderNumber: '',
+    supplier: '',
     vehicle: '',
     pallets: 0,
     scheduledTime: '',
@@ -1505,21 +1510,67 @@ function ReceivingSchedule() {
     paymentTerm: ''
   });
 
+  // Presence Tracking
+  useEffect(() => {
+    if (!profile?.uid) return;
+    
+    const presenceRef = doc(db, 'presence', profile.uid);
+    const updatePresence = async () => {
+      try {
+        await setDoc(presenceRef, {
+          lastActive: serverTimestamp(),
+          page: 'scheduling',
+          displayName: profile.displayName
+        });
+      } catch (e) {
+        console.error("Presence update failed", e);
+      }
+    };
+
+    updatePresence();
+    const interval = setInterval(updatePresence, 30000); // Update every 30s
+
+    const q = query(collection(db, 'presence'), where('page', '==', 'scheduling'));
+    const unsubPresence = onSnapshot(q, (snapshot) => {
+      // Simple filter for "active" users in the last 2 minutes
+      const now = Date.now();
+      const activeCount = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        if (!data.lastActive) return false;
+        const lastActive = data.lastActive.toMillis();
+        return now - lastActive < 120000; // 2 minutes
+      }).length;
+      setOnlineUsers(activeCount || 1); // Minimum 1 (self)
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubPresence();
+      deleteDoc(presenceRef).catch(() => {});
+    };
+  }, [profile]);
+
   useEffect(() => {
     const q = query(collection(db, 'appointments'));
     return onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ReceivingAppointment));
       // Sort in memory to avoid needing composite indexes
       data.sort((a, b) => {
-        const dateCompare = b.date.localeCompare(a.date);
+        const dateA = a.date || '';
+        const dateB = b.date || '';
+        const dateCompare = dateB.localeCompare(dateA);
         if (dateCompare !== 0) return dateCompare;
-        return a.scheduledTime.localeCompare(b.scheduledTime);
+        const timeA = a.scheduledTime || '';
+        const timeB = b.scheduledTime || '';
+        return timeA.localeCompare(timeB);
       });
       setAppointments(data);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'appointments');
     });
   }, []);
+
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1536,11 +1587,16 @@ function ReceivingSchedule() {
           ...formData,
           createdAt: serverTimestamp()
         });
+        setFilterType('date');
         setFilterDate(formData.date);
       }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
       setIsAdding(false);
       resetForm();
     } catch (error) {
+      console.error("Save error:", error);
+      alert("Erro ao salvar agendamento: " + (error instanceof Error ? error.message : "Erro desconhecido"));
       handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'appointments');
     } finally {
       setLoading(false);
@@ -1549,11 +1605,13 @@ function ReceivingSchedule() {
 
   const resetForm = () => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toLocaleDateString('en-CA'),
+      creationDate: new Date().toLocaleDateString('en-CA'),
       staff: '',
       requester: '',
       contact: '',
-      supplierOrder: '',
+      orderNumber: '',
+      supplier: '',
       vehicle: '',
       pallets: 0,
       scheduledTime: '',
@@ -1567,10 +1625,12 @@ function ReceivingSchedule() {
   const startEdit = (a: ReceivingAppointment) => {
     setFormData({
       date: a.date,
+      creationDate: a.creationDate || a.date,
       staff: a.staff,
       requester: a.requester,
       contact: a.contact,
-      supplierOrder: a.supplierOrder,
+      orderNumber: a.orderNumber || '',
+      supplier: a.supplier || '',
       vehicle: a.vehicle,
       pallets: a.pallets,
       scheduledTime: a.scheduledTime,
@@ -1602,17 +1662,19 @@ function ReceivingSchedule() {
 
   const exportToCSV = () => {
     const headers = [
-      'DATA', 'COLABORADOR', 'SOLICITANTE', 'CONTATO', 'PEDIDO FORNECEDOR', 
+      'DATA', 'COLABORADOR', 'SOLICITANTE', 'CONTATO', 'PEDIDO', 'FORNECEDOR',
       'VEÍCULO', 'PALET', 'AGENDADO', 'OBSERVAÇÃO', 'STATUS', 
       'VALOR TOTAL DA CARGA', 'PRAZO PAGAMENTO BOLETO'
     ];
     
-    const rows = appointments.filter(a => a.date === filterDate).map(a => [
+    const rows = filteredAppointments.map(a => [
       a.date,
+      a.creationDate || '-',
       a.staff,
       a.requester,
       a.contact,
-      a.supplierOrder,
+      a.orderNumber,
+      a.supplier,
       a.vehicle,
       a.pallets,
       a.scheduledTime,
@@ -1623,7 +1685,7 @@ function ReceivingSchedule() {
     ]);
 
     const csvContent = [
-      headers.join(';'),
+      ['DATA AGENDADA', 'DATA CRIAÇÃO', ...headers.slice(1)].join(';'),
       ...rows.map(r => r.join(';'))
     ].join('\n');
 
@@ -1637,7 +1699,9 @@ function ReceivingSchedule() {
     document.body.removeChild(link);
   };
 
-  const filteredAppointments = appointments.filter(a => !a.deleted && a.date === filterDate);
+  const filteredAppointments = appointments.filter(a => 
+    !a.deleted && (filterType === 'date' ? a.date === filterDate : (a.creationDate || '') === filterDate)
+  );
   
   // Calculate conflicts
   const timeCounts = filteredAppointments.reduce((acc: any, curr) => {
@@ -1647,14 +1711,102 @@ function ReceivingSchedule() {
 
   const hasTimeConflict = (time: string) => timeCounts[time] > 1;
 
+  // SummaryStats
+  const now = new Date();
+  const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+  const currentYear = now.getFullYear().toString();
+
+  const stats = {
+    total: filteredAppointments.length,
+    received: filteredAppointments.filter(a => a.status === 'Recebido').length,
+    unloading: filteredAppointments.filter(a => a.status === 'Descarregando').length,
+    waiting: filteredAppointments.filter(a => a.status === 'Aguardando').length,
+    totalPallets: filteredAppointments.reduce((sum, a) => sum + (a.pallets || 0), 0),
+    dayTotalValue: filteredAppointments.reduce((sum, a) => sum + (a.totalValue || 0), 0),
+    monthReceived: appointments.filter(a => {
+      if (!a.date || a.deleted || a.status !== 'Recebido') return false;
+      const [year, month] = a.date.split('-');
+      return year === currentYear && month === currentMonth;
+    }).reduce((sum, a) => sum + (a.totalValue || 0), 0),
+    monthPending: appointments.filter(a => {
+      if (!a.date || a.deleted || a.status === 'Recebido' || a.status === 'Cancelado') return false;
+      const [year, month] = a.date.split('-');
+      return year === currentYear && month === currentMonth;
+    }).reduce((sum, a) => sum + (a.totalValue || 0), 0)
+  };
+
   return (
     <div className="space-y-8">
+      {saveSuccess && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2"
+        >
+          <CheckCircle size={20} />
+          Agendamento salvo com sucesso!
+        </motion.div>
+      )}
+
+      {/* Summary Dashboard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-neutral-400 uppercase mb-1">Agendamentos</p>
+          <p className="text-2xl font-black dark:text-white">{stats.total}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-emerald-500 uppercase mb-1">Recebidos</p>
+          <p className="text-2xl font-black text-emerald-600">{stats.received}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-500 uppercase mb-1">Em Descarga</p>
+          <p className="text-2xl font-black text-blue-600">{stats.unloading}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-amber-500 uppercase mb-1">Aguardando</p>
+          <p className="text-2xl font-black text-amber-600">{stats.waiting}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-purple-500 uppercase mb-1">Total Paletes</p>
+          <p className="text-2xl font-black text-purple-600">{stats.totalPallets}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Vlr. Agendado</p>
+          <p className="text-sm font-black dark:text-white">R$ {stats.dayTotalValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-emerald-100/50 dark:shadow-none">
+          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Vlr. Rec. Mês</p>
+          <p className="text-sm font-black text-emerald-600">R$ {stats.monthReceived.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-amber-100/50 dark:shadow-none">
+          <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">Vlr. Pend. Mês</p>
+          <p className="text-sm font-black text-amber-600">R$ {stats.monthPending.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
-          <Calendar size={24} className="text-blue-600" />
-          Agenda de Recebimento
-        </h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
+            <Calendar size={24} className="text-blue-600" />
+            Agenda de Recebimento
+          </h3>
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-full border border-blue-100 dark:border-blue-800/50">
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
+              {onlineUsers} {onlineUsers === 1 ? 'Usuário Online' : 'Usuários Online'}
+            </span>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
+          <select 
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as any)}
+            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+          >
+            <option value="date">Data Agendada</option>
+            <option value="creationDate">Data de Criação</option>
+          </select>
           <input 
             type="date"
             value={filterDate}
@@ -1715,9 +1867,15 @@ function ReceivingSchedule() {
             )}
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-400 uppercase">Data</label>
-                <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-neutral-400 uppercase">Data de Criação</label>
+                  <input required type="date" value={formData.creationDate} onChange={e => setFormData({...formData, creationDate: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 dark:text-white text-sm outline-none cursor-not-allowed" disabled />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-neutral-400 uppercase">Data Agendada</label>
+                  <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Agendado (Hora)</label>
@@ -1736,20 +1894,32 @@ function ReceivingSchedule() {
                 <input required type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-400 uppercase">Pedido Fornecedor</label>
-                <input required type="text" value={formData.supplierOrder} onChange={e => setFormData({...formData, supplierOrder: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <label className="text-xs font-bold text-neutral-400 uppercase">Pedido</label>
+                <input required type="text" placeholder="Ex: 5412" value={formData.orderNumber} onChange={e => setFormData({...formData, orderNumber: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Fornecedor</label>
+                <input required type="text" placeholder="Nome do Fornecedor" value={formData.supplier} onChange={e => setFormData({...formData, supplier: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Veículo</label>
-                <input required type="text" value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <select required value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none">
+                  <option value="">Selecione...</option>
+                  {VEHICLE_TYPES.map(vt => (
+                    <option key={vt} value={vt}>{vt}</option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Palets</label>
                 <input required type="number" value={formData.pallets} onChange={e => setFormData({...formData, pallets: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-400 uppercase">Valor Total Carga</label>
-                <input required type="number" step="0.01" value={formData.totalValue} onChange={e => setFormData({...formData, totalValue: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <label className="text-xs font-bold text-neutral-400 uppercase">Valor Total Carga (R$)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">R$</span>
+                  <input required type="number" step="0.01" value={formData.totalValue} onChange={e => setFormData({...formData, totalValue: parseFloat(e.target.value) || 0})} className="w-full pl-10 pr-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Prazo Pagamento Boleto</label>
@@ -1786,6 +1956,7 @@ function ReceivingSchedule() {
             <thead className="bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 uppercase text-[10px] font-bold">
               <tr>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Datas</th>
                 <th className="px-6 py-4">Horário</th>
                 <th className="px-6 py-4">Pedido/Fornecedor</th>
                 <th className="px-6 py-4">Veículo</th>
@@ -1823,6 +1994,18 @@ function ReceivingSchedule() {
                           <option value="Cancelado">Cancelado</option>
                         </select>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-neutral-400">AGENDA:</span>
+                            <span className="text-xs font-black dark:text-white">{a.date.split('-').reverse().join('/')}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-neutral-400">CRIADO:</span>
+                            <span className="text-[10px] font-medium text-neutral-500">{a.creationDate ? a.creationDate.split('-').reverse().join('/') : '-'}</span>
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <span className="font-bold dark:text-white">{a.scheduledTime}</span>
@@ -1834,7 +2017,8 @@ function ReceivingSchedule() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-bold dark:text-white">{a.supplierOrder}</p>
+                        <p className="font-bold dark:text-white">{a.orderNumber}</p>
+                        <p className="text-[10px] text-neutral-500 font-medium uppercase truncate max-w-[150px]">{a.supplier}</p>
                         <p className="text-[10px] text-neutral-400">{a.staff}</p>
                       </td>
                       <td className="px-6 py-4 dark:text-neutral-300">{a.vehicle}</td>
