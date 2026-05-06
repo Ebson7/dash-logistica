@@ -52,7 +52,8 @@ import {
   FileText,
   Settings2,
   MessageSquare,
-  BarChart3
+  BarChart3,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -2284,7 +2285,7 @@ function ReceivingSchedule() {
                                 className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                                 title="Excluir"
                               >
-                                <X size={16} />
+                                <Trash2 size={16} />
                               </button>
                             </>
                           )}
