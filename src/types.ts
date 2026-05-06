@@ -56,7 +56,7 @@ export interface ReceivingAppointment {
   pallets: number;
   scheduledTime: string;
   observation: string;
-  status: 'Aguardando' | 'Descarregando' | 'Recebido' | 'Cancelado';
+  status: 'Agendado' | 'Aguardando' | 'Descarregando' | 'Recebido' | 'Cancelado';
   totalValue: number;
   paymentTerm: string;
   createdAt: number | Timestamp;

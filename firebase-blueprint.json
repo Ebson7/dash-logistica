@@ -85,7 +85,7 @@
         "pallets": { "type": "number" },
         "scheduledTime": { "type": "string" },
         "observation": { "type": "string" },
-        "status": { "type": "string", "enum": ["Aguardando", "Descarregando", "Recebido", "Cancelado"] },
+        "status": { "type": "string", "enum": ["Agendado", "Aguardando", "Descarregando", "Recebido", "Cancelado"] },
         "totalValue": { "type": "number" },
         "paymentTerm": { "type": "string" },
         "createdAt": { "type": "object" }

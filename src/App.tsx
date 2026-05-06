@@ -1490,7 +1490,8 @@ function ReceivingSchedule() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString('en-CA'));
-  const [filterType, setFilterType] = useState<'date' | 'creationDate'>('date');
+  const [filterType, setFilterType] = useState<'date' | 'creationDate' | 'all'>('date');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [onlineUsers, setOnlineUsers] = useState(0);
   
   const [formData, setFormData] = useState({
@@ -1505,7 +1506,7 @@ function ReceivingSchedule() {
     pallets: 0,
     scheduledTime: '',
     observation: '',
-    status: 'Aguardando' as ReceivingAppointment['status'],
+    status: 'Agendado' as ReceivingAppointment['status'],
     totalValue: 0,
     paymentTerm: ''
   });
@@ -1558,7 +1559,7 @@ function ReceivingSchedule() {
       data.sort((a, b) => {
         const dateA = a.date || '';
         const dateB = b.date || '';
-        const dateCompare = dateB.localeCompare(dateA);
+        const dateCompare = dateA.localeCompare(dateB);
         if (dateCompare !== 0) return dateCompare;
         const timeA = a.scheduledTime || '';
         const timeB = b.scheduledTime || '';
@@ -1616,7 +1617,7 @@ function ReceivingSchedule() {
       pallets: 0,
       scheduledTime: '',
       observation: '',
-      status: 'Aguardando',
+      status: 'Agendado',
       totalValue: 0,
       paymentTerm: ''
     });
@@ -1699,9 +1700,14 @@ function ReceivingSchedule() {
     document.body.removeChild(link);
   };
 
-  const filteredAppointments = appointments.filter(a => 
-    !a.deleted && (filterType === 'date' ? a.date === filterDate : (a.creationDate || '') === filterDate)
-  );
+  const filteredAppointments = appointments.filter(a => {
+    const matchesDate = !a.deleted && (
+      filterType === 'all' ? true : 
+      filterType === 'date' ? a.date === filterDate : (a.creationDate || '') === filterDate
+    );
+    const matchesStatus = filterStatus === 'all' ? true : a.status === filterStatus;
+    return matchesDate && matchesStatus;
+  });
   
   // Calculate conflicts
   const timeCounts = filteredAppointments.reduce((acc: any, curr) => {
@@ -1712,26 +1718,34 @@ function ReceivingSchedule() {
   const hasTimeConflict = (time: string) => timeCounts[time] > 1;
 
   // SummaryStats
-  const now = new Date();
-  const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
-  const currentYear = now.getFullYear().toString();
+  const [fYear, fMonth] = (filterDate || new Date().toISOString().split('T')[0]).split('-');
 
   const stats = {
     total: filteredAppointments.length,
     received: filteredAppointments.filter(a => a.status === 'Recebido').length,
     unloading: filteredAppointments.filter(a => a.status === 'Descarregando').length,
     waiting: filteredAppointments.filter(a => a.status === 'Aguardando').length,
+    scheduled: filteredAppointments.filter(a => a.status === 'Agendado').length,
     totalPallets: filteredAppointments.reduce((sum, a) => sum + (a.pallets || 0), 0),
     dayTotalValue: filteredAppointments.reduce((sum, a) => sum + (a.totalValue || 0), 0),
-    monthReceived: appointments.filter(a => {
-      if (!a.date || a.deleted || a.status !== 'Recebido') return false;
-      const [year, month] = a.date.split('-');
-      return year === currentYear && month === currentMonth;
+    monthScheduled: filteredAppointments.filter(a => {
+      const status = a.status;
+      if (status !== 'Agendado' && status !== 'Aguardando' && status !== 'Descarregando') return false;
+      if (filterType === 'all') return true;
+      const [year, month] = (a.date || '').split('-');
+      return year === fYear && month === fMonth;
     }).reduce((sum, a) => sum + (a.totalValue || 0), 0),
-    monthPending: appointments.filter(a => {
-      if (!a.date || a.deleted || a.status === 'Recebido' || a.status === 'Cancelado') return false;
-      const [year, month] = a.date.split('-');
-      return year === currentYear && month === currentMonth;
+    monthReceived: filteredAppointments.filter(a => {
+      if (a.status !== 'Recebido') return false;
+      if (filterType === 'all') return true;
+      const [year, month] = (a.date || '').split('-');
+      return year === fYear && month === fMonth;
+    }).reduce((sum, a) => sum + (a.totalValue || 0), 0),
+    monthCancelled: filteredAppointments.filter(a => {
+      if (a.status !== 'Cancelado') return false;
+      if (filterType === 'all') return true;
+      const [year, month] = (a.date || '').split('-');
+      return year === fYear && month === fMonth;
     }).reduce((sum, a) => sum + (a.totalValue || 0), 0)
   };
 
@@ -1756,16 +1770,20 @@ function ReceivingSchedule() {
           <p className="text-2xl font-black dark:text-white">{stats.total}</p>
         </div>
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-emerald-500 uppercase mb-1">Recebidos</p>
-          <p className="text-2xl font-black text-emerald-600">{stats.received}</p>
+          <p className="text-[10px] font-bold text-neutral-600 uppercase mb-1">Agendado</p>
+          <p className="text-2xl font-black text-neutral-500">{stats.scheduled}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-blue-500 uppercase mb-1">Em Descarga</p>
-          <p className="text-2xl font-black text-blue-600">{stats.unloading}</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm text-amber-500">
+          <p className="text-[10px] font-bold uppercase mb-1">Aguardando</p>
+          <p className="text-2xl font-black">{stats.waiting}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-amber-500 uppercase mb-1">Aguardando</p>
-          <p className="text-2xl font-black text-amber-600">{stats.waiting}</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm text-blue-500">
+          <p className="text-[10px] font-bold uppercase mb-1">Em Descarga</p>
+          <p className="text-2xl font-black">{stats.unloading}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm text-emerald-500">
+          <p className="text-[10px] font-bold uppercase mb-1">Recebidos</p>
+          <p className="text-2xl font-black">{stats.received}</p>
         </div>
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
           <p className="text-[10px] font-bold text-purple-500 uppercase mb-1">Total Paletes</p>
@@ -1773,15 +1791,15 @@ function ReceivingSchedule() {
         </div>
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
           <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Vlr. Agendado</p>
-          <p className="text-sm font-black dark:text-white">R$ {stats.dayTotalValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+          <p className="text-sm font-black dark:text-white">R$ {stats.monthScheduled.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
         </div>
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-emerald-100/50 dark:shadow-none">
-          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Vlr. Rec. Mês</p>
+          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Vlr. Recebido</p>
           <p className="text-sm font-black text-emerald-600">R$ {stats.monthReceived.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-amber-100/50 dark:shadow-none">
-          <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">Vlr. Pend. Mês</p>
-          <p className="text-sm font-black text-amber-600">R$ {stats.monthPending.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-red-100/50 dark:shadow-none">
+          <p className="text-[10px] font-bold text-red-600 uppercase mb-1">Vlr. Cancelado</p>
+          <p className="text-sm font-black text-red-600">R$ {stats.monthCancelled.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
         </div>
       </div>
 
@@ -1800,19 +1818,46 @@ function ReceivingSchedule() {
         </div>
         <div className="flex items-center gap-2">
           <select 
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+          >
+            <option value="all">Todos os Status</option>
+            <option value="Agendado">Agendado</option>
+            <option value="Aguardando">Aguardando</option>
+            <option value="Descarregando">Descarregando</option>
+            <option value="Recebido">Recebido</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+          <select 
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
             className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
           >
             <option value="date">Data Agendada</option>
             <option value="creationDate">Data de Criação</option>
+            <option value="all">Ver Tudo (Sem Filtro)</option>
           </select>
-          <input 
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
-          />
+          {filterType !== 'all' && (
+            <input 
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+            />
+          )}
+          {(filterType !== 'all' || filterStatus !== 'all') && (
+            <button
+              onClick={() => {
+                setFilterType('all');
+                setFilterStatus('all');
+              }}
+              className="p-2 text-neutral-400 hover:text-blue-600 transition-colors"
+              title="Limpar Filtros"
+            >
+              <X size={20} />
+            </button>
+          )}
           {!isViewer && (
             <button 
               onClick={() => {
@@ -1985,9 +2030,11 @@ function ReceivingSchedule() {
                             a.status === 'Recebido' ? 'bg-emerald-100 text-emerald-600' : 
                             a.status === 'Descarregando' ? 'bg-blue-100 text-blue-600' : 
                             a.status === 'Cancelado' ? 'bg-red-100 text-red-600' : 
-                            'bg-amber-100 text-amber-600'
+                            a.status === 'Aguardando' ? 'bg-amber-100 text-amber-600' :
+                            'bg-neutral-100 text-neutral-600'
                           } disabled:opacity-80 disabled:cursor-not-allowed`}
                         >
+                          <option value="Agendado">Agendado</option>
                           <option value="Aguardando">Aguardando</option>
                           <option value="Descarregando">Descarregando</option>
                           <option value="Recebido">Recebido</option>

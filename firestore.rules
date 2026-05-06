@@ -66,7 +66,7 @@ service cloud.firestore {
              data.scheduledTime is string &&
              data.pallets is number &&
              data.totalValue is number &&
-             (data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado');
+             (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado');
     }
 
     match /appointments/{appointmentId} {
