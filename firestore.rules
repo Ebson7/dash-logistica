@@ -33,54 +33,68 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'anonymous');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departmentId == 'admin';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function isValidLog(data) {
       return data.keys().hasAll(['date', 'departmentId', 'staffPresent']) &&
-             data.date is string &&
-             data.departmentId is string &&
+             data.date is string && data.date.size() <= 20 &&
+             data.departmentId is string && data.departmentId.size() <= 50 &&
              data.staffPresent is number &&
              data.staffPresent >= 0;
     }
 
+    function isValidAppointment(data) {
+      return data.date is string && data.date.size() <= 20 &&
+             data.creationDate is string && data.creationDate.size() <= 30 &&
+             data.staff is string && data.staff.size() <= 100 &&
+             data.requester is string && data.requester.size() <= 100 &&
+             data.orderNumber is string && data.orderNumber.size() <= 50 &&
+             data.supplier is string && data.supplier.size() <= 200 &&
+             data.vehicle is string && data.vehicle.size() <= 100 &&
+             data.scheduledTime is string && data.scheduledTime.size() <= 10 &&
+             data.observation is string && data.observation.size() <= 1000 &&
+             data.collaborator is string && data.collaborator.size() <= 100 &&
+             (data.pallets is number || data.pallets == 0) &&
+             (data.totalValue is number || data.totalValue == 0) &&
+             (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado');
+    }
+
     match /users/{userId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /logs/{logId} {
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidLog(request.resource.data);
-      allow delete: if isSignedIn();
+      allow create, update: if isVerified() && isValidLog(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /settings/{settingId} {
-      allow read, write: if isSignedIn();
-    }
-
-    function isValidAppointment(data) {
-      return data.date is string &&
-             data.creationDate is string &&
-             data.staff is string &&
-             data.requester is string &&
-             data.orderNumber is string &&
-             data.supplier is string &&
-             data.vehicle is string &&
-             data.scheduledTime is string &&
-             data.observation is string &&
-             data.collaborator is string &&
-             data.pallets is number &&
-             data.totalValue is number &&
-             (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado');
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /appointments/{appointmentId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && 
+      allow create: if isVerified() && 
                     isValidAppointment(request.resource.data) &&
                     request.resource.data.createdAt == request.time;
-      allow update: if isSignedIn() && 
-                    (isValidAppointment(request.resource.data) || 
-                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) || 
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted'])));
-      allow delete: if isSignedIn();
+      allow update: if isVerified() && (
+                    isValidAppointment(request.resource.data) || 
+                    request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'deleted', 'updatedAt'])
+                    );
+      allow delete: if isAdmin();
     }
 
     match /presence/{uid} {

@@ -561,6 +561,74 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<any>('operation');
 
+  // Notification System
+  useEffect(() => {
+    if ("Notification" in window) {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Monitor Critical Logs
+  useEffect(() => {
+    if (!profile) return;
+    
+    const q = query(
+      collection(db, 'logs'), 
+      where('isCritical', '==', true),
+      orderBy('timestamp', 'desc'),
+      limit(1)
+    );
+
+    let isFirstRun = true;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (isFirstRun) {
+        isFirstRun = false;
+        return;
+      }
+      
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          new Notification("🚨 Ocorrência Crítica Registrada", {
+            body: `Departamento: ${data.departmentId}\nObs: ${data.observations || 'Sem detalhes'}`,
+            icon: '/favicon.ico'
+          });
+        }
+      });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
+
+    return () => unsubscribe();
+  }, [profile]);
+
+  // Monitor Daily Appointment Value (> 2M)
+  useEffect(() => {
+    if (!profile) return;
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, 'appointments'),
+      where('date', '==', todayStr),
+      where('deleted', '==', false)
+    );
+
+    let hasNotifiedToday = false;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const total = snapshot.docs.reduce((sum, doc) => sum + (doc.data().totalValue || 0), 0);
+      
+      if (total >= 2000000 && !hasNotifiedToday) {
+        new Notification("💰 Meta de Valor Atingida", {
+          body: `O valor total de agendamentos para hoje superou R$ 2.000.000,00!\nTotal atual: R$ ${total.toLocaleString('pt-BR')}`,
+          icon: '/favicon.ico'
+        });
+        hasNotifiedToday = true;
+      } else if (total < 2000000) {
+        hasNotifiedToday = false;
+      }
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'appointments'));
+
+    return () => unsubscribe();
+  }, [profile]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -723,16 +791,27 @@ function OccurrenceCard({ occ }: { occ: any }) {
   return (
     <div 
       onClick={() => setIsExpanded(!isExpanded)}
-      className="group p-4 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-900 transition-all shadow-sm cursor-pointer"
+      className={`group p-4 bg-white dark:bg-neutral-900 rounded-2xl border transition-all shadow-sm cursor-pointer ${
+        occ.isCritical 
+          ? 'border-red-200 dark:border-red-900/50 bg-red-50/10 hover:bg-red-50/20' 
+          : 'border-neutral-100 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-900'
+      }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-          occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 
-          occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 
-          'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-        }`}>
-          {occ.severity === 'high' ? 'Crítica' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
-        </span>
+        <div className="flex gap-2">
+          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+            occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 
+            occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 
+            'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+          }`}>
+            {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+          </span>
+          {occ.isCritical && (
+            <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-200">
+              CRÍTICO
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
             <Clock size={10} />
@@ -1219,6 +1298,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
   const [occurrenceTitle, setOccurrenceTitle] = useState('');
   const [occurrence, setOccurrence] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('low');
+  const [isCritical, setIsCritical] = useState(false);
   const [extraData, setExtraData] = useState<any>({});
   const [logs, setLogs] = useState<any[]>([]);
   const today = new Date().toLocaleDateString('en-CA');
@@ -1291,15 +1371,21 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
       timestamp: Date.now(),
       title: occurrenceTitle,
       description: occurrence,
-      severity
+      severity,
+      isCritical
     };
 
     if (existingLog) {
       try {
         const updatedOccurrences = [...(existingLog.occurrences || []), newOcc];
-        await setDoc(doc(db, 'logs', existingLog.id), { occurrences: updatedOccurrences }, { merge: true });
+        await setDoc(doc(db, 'logs', existingLog.id), { 
+          occurrences: updatedOccurrences,
+          isCritical: isCritical || existingLog.isCritical || false,
+          timestamp: serverTimestamp() // For notification ordering
+        }, { merge: true });
         setOccurrenceTitle('');
         setOccurrence('');
+        setIsCritical(false);
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, `logs/${existingLog.id}/occurrences`);
       }
@@ -1459,20 +1545,33 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
                   onChange={(e) => setOccurrence(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
                 />
-                <div className="flex items-center gap-4">
-                  <select 
-                    value={severity}
-                    onChange={(e: any) => setSeverity(e.target.value)}
-                    className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm outline-none"
-                  >
-                    <option value="low">Baixa Gravidade</option>
-                    <option value="medium">Média Gravidade</option>
-                    <option value="high">Alta Gravidade</option>
-                  </select>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex w-full sm:w-auto gap-2">
+                    <select 
+                      value={severity}
+                      onChange={(e: any) => setSeverity(e.target.value)}
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm outline-none"
+                    >
+                      <option value="low">Gravidade Baixa</option>
+                      <option value="medium">Gravidade Média</option>
+                      <option value="high">Gravidade Alta</option>
+                    </select>
+                    
+                    <label className="flex items-center gap-2 cursor-pointer bg-neutral-50 dark:bg-neutral-800 px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                      <input 
+                        type="checkbox" 
+                        checked={isCritical}
+                        onChange={(e) => setIsCritical(e.target.checked)}
+                        className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                      />
+                      <span className={`text-xs font-bold uppercase ${isCritical ? 'text-red-600 animate-pulse' : 'text-neutral-400'}`}>Crítico</span>
+                    </label>
+                  </div>
+                  
                   <button 
                     onClick={addOccurrence}
                     disabled={!occurrenceTitle || !occurrence}
-                    className="flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2 rounded-xl font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full sm:w-auto flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2.5 rounded-xl font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Plus size={18} />
                     Adicionar
@@ -1533,12 +1632,12 @@ function ReceivingSchedule() {
     orderNumber: '',
     supplier: '',
     vehicle: '',
-    pallets: 0,
+    pallets: '' as any,
     scheduledTime: '',
     observation: '',
     collaborator: '',
     status: 'Agendado' as ReceivingAppointment['status'],
-    totalValue: 0,
+    totalValue: '' as any,
     paymentTerm: ''
   });
 
@@ -1608,17 +1707,18 @@ function ReceivingSchedule() {
     e.preventDefault();
     setLoading(true);
     try {
+      const dataToSave = {
+        ...formData,
+        pallets: formData.pallets === '' ? 0 : Number(formData.pallets),
+        totalValue: formData.totalValue === '' ? 0 : Number(formData.totalValue),
+        createdAt: editingId ? (appointments.find(a => a.id === editingId)?.createdAt || serverTimestamp()) : serverTimestamp()
+      };
+
       if (editingId) {
-        await setDoc(doc(db, 'appointments', editingId), {
-          ...formData,
-          createdAt: appointments.find(a => a.id === editingId)?.createdAt || serverTimestamp()
-        }, { merge: true });
+        await setDoc(doc(db, 'appointments', editingId), dataToSave, { merge: true });
         setEditingId(null);
       } else {
-        await addDoc(collection(db, 'appointments'), {
-          ...formData,
-          createdAt: serverTimestamp()
-        });
+        await addDoc(collection(db, 'appointments'), dataToSave);
         setFilterType('date');
         setFilterDate(formData.date);
       }
@@ -1645,12 +1745,12 @@ function ReceivingSchedule() {
       orderNumber: '',
       supplier: '',
       vehicle: '',
-      pallets: 0,
+      pallets: '' as any,
       scheduledTime: '',
       observation: '',
       collaborator: '',
       status: 'Agendado',
-      totalValue: 0,
+      totalValue: '' as any,
       paymentTerm: ''
     });
   };
@@ -2004,13 +2104,38 @@ function ReceivingSchedule() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Palets</label>
-                <input required type="number" value={formData.pallets} onChange={e => setFormData({...formData, pallets: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <input 
+                  required 
+                  type="text" 
+                  placeholder="Qtd. Paletes"
+                  value={formData.pallets === 0 || formData.pallets === '' ? '' : formData.pallets} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setFormData({...formData, pallets: val === '' ? '' : parseInt(val)});
+                  }} 
+                  className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" 
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Valor Total Carga (R$)</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">R$</span>
-                  <input required type="number" step="0.01" value={formData.totalValue} onChange={e => setFormData({...formData, totalValue: parseFloat(e.target.value) || 0})} className="w-full pl-10 pr-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                  <input 
+                    required 
+                    type="text" 
+                    placeholder="0,00"
+                    value={formData.totalValue === 0 || formData.totalValue === '' ? '' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(formData.totalValue)} 
+                    onChange={e => {
+                      const rawValue = e.target.value.replace(/\D/g, '');
+                      if (rawValue === '') {
+                        setFormData({...formData, totalValue: '' as any});
+                      } else {
+                        const newValue = parseFloat(rawValue) / 100;
+                        setFormData({...formData, totalValue: newValue});
+                      }
+                    }} 
+                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" 
+                  />
                 </div>
               </div>
               <div className="space-y-2">
