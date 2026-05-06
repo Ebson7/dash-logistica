@@ -56,6 +56,7 @@ export interface ReceivingAppointment {
   pallets: number;
   scheduledTime: string;
   observation: string;
+  collaborator: string;
   status: 'Agendado' | 'Aguardando' | 'Descarregando' | 'Recebido' | 'Cancelado';
   totalValue: number;
   paymentTerm: string;

@@ -64,6 +64,8 @@ service cloud.firestore {
              data.supplier is string &&
              data.vehicle is string &&
              data.scheduledTime is string &&
+             data.observation is string &&
+             data.collaborator is string &&
              data.pallets is number &&
              data.totalValue is number &&
              (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado');

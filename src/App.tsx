@@ -51,7 +51,8 @@ import {
   Sun,
   FileText,
   Settings2,
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -369,7 +370,7 @@ function LoginPage() {
   );
 }
 
-function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: string, setActiveTab: (t: any) => void, isOpen?: boolean, onClose?: () => void }) {
+function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpen, onClose }: { activeTab: string, setActiveTab: (t: any) => void, activeSubTab: any, setActiveSubTab: (t: any) => void, isOpen?: boolean, onClose?: () => void }) {
   const { profile, logout } = useAuth();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -450,11 +451,14 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
                 key={item.id}
                 onClick={() => {
                   setActiveTab(item.id);
+                  if (item.id === 'recebimento' && activeSubTab === 'dashboard') {
+                    setActiveSubTab('operation');
+                  }
                   if (onClose) onClose();
                 }}
                 title={isCollapsed ? item.name : ''}
                 className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all ${
-                  activeTab === item.id 
+                  activeTab === item.id && (item.id !== 'recebimento' || activeSubTab !== 'dashboard')
                     ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold' 
                     : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
                 }`}
@@ -492,6 +496,25 @@ function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: { activeTab: stri
               </div>
             )}
           </a>
+
+          {(profile?.departmentId === 'admin' || profile?.departmentId === 'recebimento' || profile?.departmentId === 'viewer') && (
+            <button
+              onClick={() => {
+                setActiveTab('recebimento');
+                setActiveSubTab('dashboard');
+                if (onClose) onClose();
+              }}
+              title={isCollapsed ? 'Dashboard Agenda' : ''}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-xl transition-all ${
+                activeTab === 'recebimento' && activeSubTab === 'dashboard'
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold shadow-inner' 
+                  : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100 border border-transparent border-dashed hover:border-neutral-200'
+              }`}
+            >
+              <BarChart3 size={20} className="shrink-0" />
+              {!isCollapsed && <span className="text-sm font-bold">Dashboard Agenda</span>}
+            </button>
+          )}
 
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center shrink-0">
@@ -536,6 +559,7 @@ export default function App() {
 function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: any) => void }) {
   const { user, profile, loading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<any>('operation');
 
   if (loading) {
     return (
@@ -552,6 +576,8 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
+        activeSubTab={activeSubTab}
+        setActiveSubTab={setActiveSubTab}
         isOpen={isMobileMenuOpen} 
         onClose={() => setIsMobileMenuOpen(false)} 
       />
@@ -583,7 +609,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'recebimento' && <RecebimentoView />}
+              {activeTab === 'recebimento' && <RecebimentoView initialSubTab={activeSubTab} />}
               {activeTab === 'estoque' && <EstoqueView />}
               {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
               {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
@@ -608,7 +634,11 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  LineChart,
+  Line,
+  Area,
+  AreaChart
 } from 'recharts';
 
 // --- Shared Components ---
@@ -1506,6 +1536,7 @@ function ReceivingSchedule() {
     pallets: 0,
     scheduledTime: '',
     observation: '',
+    collaborator: '',
     status: 'Agendado' as ReceivingAppointment['status'],
     totalValue: 0,
     paymentTerm: ''
@@ -1617,6 +1648,7 @@ function ReceivingSchedule() {
       pallets: 0,
       scheduledTime: '',
       observation: '',
+      collaborator: '',
       status: 'Agendado',
       totalValue: 0,
       paymentTerm: ''
@@ -1636,6 +1668,7 @@ function ReceivingSchedule() {
       pallets: a.pallets,
       scheduledTime: a.scheduledTime,
       observation: a.observation,
+      collaborator: a.collaborator || '',
       status: a.status,
       totalValue: a.totalValue,
       paymentTerm: a.paymentTerm
@@ -1671,7 +1704,7 @@ function ReceivingSchedule() {
     const rows = filteredAppointments.map(a => [
       a.date,
       a.creationDate || '-',
-      a.staff,
+      a.collaborator || a.staff || '-',
       a.requester,
       a.contact,
       a.orderNumber,
@@ -1927,8 +1960,22 @@ function ReceivingSchedule() {
                 <input required type="time" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-400 uppercase">Colaborador</label>
-                <input required type="text" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <label className="text-xs font-bold text-neutral-400 uppercase">Colaborador Responsável</label>
+                <select 
+                  required 
+                  value={formData.collaborator} 
+                  onChange={e => setFormData({...formData, collaborator: e.target.value})} 
+                  className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="Michael">Michael</option>
+                  <option value="Naldo">Naldo</option>
+                  <option value="Allan">Allan</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Quem Atendeu</label>
+                <input required type="text" placeholder="Nome de quem atendeu" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Solicitante</label>
@@ -2001,6 +2048,7 @@ function ReceivingSchedule() {
             <thead className="bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 uppercase text-[10px] font-bold">
               <tr>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Responsável</th>
                 <th className="px-6 py-4">Datas</th>
                 <th className="px-6 py-4">Horário</th>
                 <th className="px-6 py-4">Pedido/Fornecedor</th>
@@ -2043,6 +2091,12 @@ function ReceivingSchedule() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
+                          <p className="text-xs font-black dark:text-white uppercase">{a.collaborator || '-'}</p>
+                          <p className="text-[10px] text-neutral-400 font-medium">{a.staff || 'N/A'}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-neutral-400">AGENDA:</span>
                             <span className="text-xs font-black dark:text-white">{a.date.split('-').reverse().join('/')}</span>
@@ -2066,7 +2120,6 @@ function ReceivingSchedule() {
                       <td className="px-6 py-4">
                         <p className="font-bold dark:text-white">{a.orderNumber}</p>
                         <p className="text-[10px] text-neutral-500 font-medium uppercase truncate max-w-[150px]">{a.supplier}</p>
-                        <p className="text-[10px] text-neutral-400">{a.staff}</p>
                       </td>
                       <td className="px-6 py-4 dark:text-neutral-300">{a.vehicle}</td>
                       <td className="px-6 py-4">
@@ -2124,9 +2177,354 @@ function ReceivingSchedule() {
   );
 }
 
-function RecebimentoView() {
+function SchedulingDashboard() {
+  const [appointments, setAppointments] = useState<ReceivingAppointment[]>([]);
+  const today = new Date().toISOString().split('T')[0];
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().split('-').slice(0, 2).join('-')); // YYYY-MM
+  const [selectedWeekIdx, setSelectedWeekIdx] = useState<number | 'all'>('all');
+
+  useEffect(() => {
+    const q = query(collection(db, 'appointments'));
+    return onSnapshot(q, (snapshot) => {
+      setAppointments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ReceivingAppointment)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'appointments');
+    });
+  }, []);
+
+  const weeks = React.useMemo(() => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const list = [];
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    
+    let current = new Date(firstDay);
+    const day = current.getDay();
+    const diff = (day === 0 ? -6 : 1) - day;
+    current.setDate(current.getDate() + diff);
+
+    while (current <= lastDay || list.length < 4) {
+       const start = new Date(current);
+       const end = new Date(current);
+       end.setDate(end.getDate() + 6);
+       list.push({ 
+         start: new Date(start), 
+         end: new Date(end),
+         label: `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
+       });
+       current.setDate(current.getDate() + 7);
+       if (current > lastDay && list.length >= 5) break; 
+    }
+    return list;
+  }, [selectedMonth]);
+
+  const dashboardData = React.useMemo(() => {
+    if (selectedWeekIdx === 'all') {
+      return appointments.filter(a => {
+        if (a.deleted || !a.date) return false;
+        return a.date.startsWith(selectedMonth);
+      });
+    }
+    
+    const activeWeek = weeks[selectedWeekIdx];
+    if (!activeWeek) return [];
+
+    return appointments.filter(a => {
+      if (a.deleted || !a.date) return false;
+      const aDateStr = a.date;
+      const startStr = activeWeek.start.toISOString().split('T')[0];
+      const endStr = activeWeek.end.toISOString().split('T')[0];
+      return aDateStr >= startStr && aDateStr <= endStr;
+    });
+  }, [appointments, selectedWeekIdx, weeks, selectedMonth]);
+
+  const collaboratorData = React.useMemo(() => {
+    const counts: Record<string, number> = { 'Michael': 0, 'Naldo': 0, 'Allan': 0 };
+    dashboardData.forEach(a => {
+      if (a.collaborator && counts[a.collaborator] !== undefined) {
+        counts[a.collaborator] += (a.totalValue || 0);
+      }
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [dashboardData]);
+
+  const calendarDays = React.useMemo(() => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1).getDay();
+    const lastDay = new Date(year, month, 0).getDate();
+    
+    const days = [];
+    // Adjust first day to handle Monday as first day of week technically (standard in Brazil)
+    // prefix is number of empty slots before day 1
+    const prefix = firstDay === 0 ? 6 : firstDay - 1;
+    for (let i = 0; i < prefix; i++) days.push(null);
+    
+    for (let i = 1; i <= lastDay; i++) {
+        const dateStr = `${selectedMonth}-${String(i).padStart(2, '0')}`;
+        const dayAppointments = appointments.filter(a => a.date === dateStr && !a.deleted);
+        const dayTotal = dayAppointments
+            .filter(a => a.status === 'Agendado' || a.status === 'Aguardando' || a.status === 'Descarregando')
+            .reduce((sum, a) => sum + (a.totalValue || 0), 0);
+        
+        days.push({ 
+          day: i, 
+          value: dayTotal, 
+          count: dayAppointments.length,
+          received: dayAppointments.filter(a => a.status === 'Recebido').length,
+          cancelled: dayAppointments.filter(a => a.status === 'Cancelado').length
+        });
+    }
+    return days;
+  }, [selectedMonth, appointments]);
+
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  const stats = {
+    received: dashboardData.filter(a => a.status === 'Recebido').reduce((sum, a) => sum + (a.totalValue || 0), 0),
+    cancelled: dashboardData.filter(a => a.status === 'Cancelado').reduce((sum, a) => sum + (a.totalValue || 0), 0),
+    scheduled: dashboardData.filter(a => {
+      const isPending = a.status === 'Agendado' || a.status === 'Aguardando' || a.status === 'Descarregando';
+      return isPending && a.date >= today;
+    }).reduce((sum, a) => sum + (a.totalValue || 0), 0)
+  };
+
+  const chartData = React.useMemo(() => {
+    const days = [];
+    
+    if (selectedWeekIdx === 'all') {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      
+      for (let i = 1; i <= lastDay; i++) {
+        const dateStr = `${selectedMonth}-${String(i).padStart(2, '0')}`;
+        const dayTotal = dashboardData
+            .filter(a => a.date === dateStr && (a.status === 'Agendado' || a.status === 'Aguardando' || a.status === 'Descarregando'))
+            .reduce((sum, a) => sum + (a.totalValue || 0), 0);
+        
+        days.push({
+            name: `${i}`,
+            date: `${String(i).padStart(2, '0')}/${String(month).padStart(2, '0')}`,
+            value: dayTotal
+        });
+      }
+      return days;
+    }
+
+    const activeWeek = weeks[selectedWeekIdx];
+    if (!activeWeek) return [];
+
+    let curr = new Date(activeWeek.start);
+    for (let i = 0; i < 7; i++) {
+        const dateStr = curr.toISOString().split('T')[0];
+        const dayTotal = dashboardData
+            .filter(a => a.date === dateStr && (a.status === 'Agendado' || a.status === 'Aguardando' || a.status === 'Descarregando'))
+            .reduce((sum, a) => sum + (a.totalValue || 0), 0);
+        
+        days.push({
+            name: curr.toLocaleDateString('pt-BR', { weekday: 'short' }),
+            date: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            value: dayTotal
+        });
+        curr.setDate(curr.getDate() + 1);
+    }
+    return days;
+  }, [selectedWeekIdx, weeks, selectedMonth, dashboardData]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row gap-4 items-end justify-between bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="space-y-1 flex-1">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase ml-1">Mês de Referência</label>
+            <input 
+              type="month" 
+              value={selectedMonth} 
+              onChange={e => {
+                setSelectedMonth(e.target.value);
+                setSelectedWeekIdx('all');
+              }} 
+              className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="space-y-1 flex-1">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase ml-1">Semana</label>
+            <select 
+              value={selectedWeekIdx} 
+              onChange={e => setSelectedWeekIdx(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Todo o Mês</option>
+              {weeks.map((w, idx) => (
+                <option key={idx} value={idx}>{w.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 text-neutral-400 text-xs italic bg-blue-50/50 dark:bg-blue-900/10 px-4 py-2 rounded-xl">
+          <AlertCircle size={14} className="text-blue-500" />
+          <span>Valores agendados são zerados para datas passadas</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
+          <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">{selectedWeekIdx === 'all' ? 'Vlr. Agendado Mês' : 'Vlr. Agendado Semana'}</p>
+          <p className="text-2xl font-black dark:text-white">R$ {stats.scheduled.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+          <div className="mt-2 text-[10px] text-neutral-400">Total previsto para futuros agendamentos</div>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
+          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">{selectedWeekIdx === 'all' ? 'Vlr. Recebido Mês' : 'Vlr. Recebido Semana'}</p>
+          <p className="text-2xl font-black text-emerald-600">R$ {stats.received.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+          <div className="mt-2 text-[10px] text-neutral-400">Total efetivamente recebido no período</div>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm transition-all hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
+          <p className="text-[10px] font-bold text-red-600 uppercase mb-1">{selectedWeekIdx === 'all' ? 'Vlr. Cancelado Mês' : 'Vlr. Cancelado Semana'}</p>
+          <p className="text-2xl font-black text-red-600">R$ {stats.cancelled.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+          <div className="mt-2 text-[10px] text-neutral-400">Total de agendamentos cancelados</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white dark:bg-neutral-900 p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <h3 className="text-lg font-bold mb-8 flex items-center gap-2 dark:text-white uppercase tracking-tight">
+            <History size={20} className="text-blue-600" />
+            Timeline de Agendamentos
+          </h3>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#9ca3af', fontSize: 10}} 
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#9ca3af', fontSize: 10}} 
+                  tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} 
+                />
+                <Tooltip 
+                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px'}}
+                  formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR')}`, 'Valor Agendado']}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorValue)" 
+                  animationDuration={1500}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <h3 className="text-lg font-bold mb-8 flex items-center gap-2 dark:text-white uppercase tracking-tight">
+            <Users size={20} className="text-purple-600" />
+            Vlr. por Colaborador
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={collaboratorData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {collaboratorData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(val: number) => `R$ ${val.toLocaleString('pt-BR')}`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 space-y-2">
+            {collaboratorData.map((item, idx) => (
+              <div key={item.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                  <span className="text-xs font-bold text-neutral-600 dark:text-neutral-400 capitalize">{item.name}</span>
+                </div>
+                <span className="text-xs font-black dark:text-white">R$ {item.value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+        <h3 className="text-lg font-bold mb-6 flex items-center justify-between dark:text-white uppercase tracking-tight">
+          <div className="flex items-center gap-2">
+            <Calendar size={20} className="text-blue-600" />
+            Visão Grade Mensal
+          </div>
+          <span className="text-neutral-400 text-[10px] font-normal lowercase italic">Legenda: vlr. agendado / status por cor</span>
+        </h3>
+        
+        <div className="grid grid-cols-7 gap-px bg-neutral-100 dark:bg-neutral-800 p-px rounded-2xl overflow-hidden shadow-inner">
+          {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
+            <div key={d} className="bg-neutral-50 dark:bg-neutral-800/50 p-2 text-center text-[10px] font-bold text-neutral-400 uppercase">{d}</div>
+          ))}
+          {calendarDays.map((day, idx) => (
+            <div 
+              key={idx} 
+              className={`min-h-[100px] p-3 bg-white dark:bg-neutral-900 flex flex-col gap-1 transition-all ${day ? 'hover:bg-blue-50/30' : 'bg-neutral-50/30'}`}
+            >
+              {day && (
+                <>
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-bold text-neutral-400">{day.day}</span>
+                    {day.count > 0 && (
+                      <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full ring-1 ring-blue-200">
+                        {day.count}
+                      </span>
+                    )}
+                  </div>
+                  {day.value > 0 && (
+                    <div className="mt-auto">
+                      <p className="text-[9px] font-black text-blue-600 truncate">R$ {(day.value/1000).toFixed(1)}k</p>
+                    </div>
+                  )}
+                  <div className="flex gap-1 mt-1">
+                    {day.received > 0 && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm" title={`${day.received} Recebidos`}></div>}
+                    {day.cancelled > 0 && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" title={`${day.cancelled} Cancelados`}></div>}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecebimentoView({ initialSubTab = 'operation' }: { initialSubTab?: 'operation' | 'schedule' | 'dashboard' }) {
   const [settings, setSettings] = useState<any>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'operation' | 'schedule'>('operation');
+  const [activeSubTab, setActiveSubTab] = useState<'operation' | 'schedule' | 'dashboard'>(initialSubTab);
+
+  useEffect(() => {
+    // Sync subtab if prop changes (e.g. clicking from sidebar when already in Recebimento tab)
+    setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
 
   useEffect(() => {
     return onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
@@ -2138,7 +2536,7 @@ function RecebimentoView() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-4 border-b border-neutral-100 dark:border-neutral-800 p-1">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 border-b border-neutral-100 dark:border-neutral-800 p-1">
         <button 
           onClick={() => setActiveSubTab('operation')}
           className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'operation' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
@@ -2150,6 +2548,12 @@ function RecebimentoView() {
           className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'schedule' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
         >
           Agenda de Recebimento
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('dashboard')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+        >
+          Dashboard Agenda
         </button>
       </div>
 
@@ -2163,8 +2567,10 @@ function RecebimentoView() {
             { name: 'vehiclesByType', label: 'Quantidade por Tipo de Veículo', type: 'counter-list', options: vehicleOptions }
           ]} 
         />
-      ) : (
+      ) : activeSubTab === 'schedule' ? (
         <ReceivingSchedule />
+      ) : (
+        <SchedulingDashboard />
       )}
     </div>
   );
