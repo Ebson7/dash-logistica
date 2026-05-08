@@ -69,3 +69,9 @@ export const RECEIVING_LOCATIONS = [
   'Boracéia',
   'Outro',
 ] as const;
+
+export const RECEIVING_TYPES = [
+  'Recebimento',
+  'Retorno OP',
+  'Retorno BC',
+] as const;

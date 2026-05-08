@@ -61,6 +61,7 @@ export interface ReceivingAppointment {
   totalValue: number;
   paymentTerm: string;
   receivingLocation: 'Marsil' | 'OP. Logístico' | 'Boracéia' | 'Outro';
+  receivingType: 'Recebimento' | 'Retorno OP' | 'Retorno BC';
   createdAt: number | Timestamp;
   deleted?: boolean;
 }

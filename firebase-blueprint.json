@@ -90,9 +90,10 @@
         "totalValue": { "type": "number" },
         "paymentTerm": { "type": "string" },
         "receivingLocation": { "type": "string", "enum": ["Marsil", "OP. Logístico", "Boracéia", "Outro"] },
+        "receivingType": { "type": "string", "enum": ["Recebimento", "Retorno OP", "Retorno BC"] },
         "createdAt": { "type": "object" }
       },
-      "required": ["date", "supplier", "collaborator", "receivingLocation"]
+      "required": ["date", "supplier", "collaborator", "receivingLocation", "receivingType"]
     },
     "Presence": {
       "title": "Presence",

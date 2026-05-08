@@ -58,6 +58,7 @@ service cloud.firestore {
              data.supplier is string && data.supplier.size() <= 200 &&
              data.collaborator is string && data.collaborator.size() <= 100 &&
              data.receivingLocation is string && (data.receivingLocation == 'Marsil' || data.receivingLocation == 'OP. Logístico' || data.receivingLocation == 'Boracéia' || data.receivingLocation == 'Outro') &&
+             data.receivingType is string && (data.receivingType == 'Recebimento' || data.receivingType == 'Retorno OP' || data.receivingType == 'Retorno BC') &&
              (!('staff' in data) || (data.staff is string && data.staff.size() <= 100)) &&
              (!('requester' in data) || (data.requester is string && data.requester.size() <= 100)) &&
              (!('orderNumber' in data) || (data.orderNumber is string && data.orderNumber.size() <= 50)) &&

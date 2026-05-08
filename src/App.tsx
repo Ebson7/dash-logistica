@@ -13,7 +13,7 @@ import {
 import { doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile, DepartmentId, ReceivingAppointment } from './types';
-import { DEPARTMENTS, VEHICLE_TYPES, RECEIVING_LOCATIONS } from './constants';
+import { DEPARTMENTS, VEHICLE_TYPES, RECEIVING_LOCATIONS, RECEIVING_TYPES } from './constants';
 import { 
   LayoutDashboard, 
   Package, 
@@ -1616,6 +1616,7 @@ function ReceivingSchedule() {
   const [filterType, setFilterType] = useState<'date' | 'creationDate' | 'all'>('date');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterLocation, setFilterLocation] = useState<string>('all');
+  const [filterReceivingType, setFilterReceivingType] = useState<string>('all');
   const [onlineUsers, setOnlineUsers] = useState(0);
   
   const [formData, setFormData] = useState({
@@ -1632,6 +1633,7 @@ function ReceivingSchedule() {
     observation: '',
     collaborator: '',
     receivingLocation: 'Marsil' as ReceivingAppointment['receivingLocation'],
+    receivingType: 'Recebimento' as ReceivingAppointment['receivingType'],
     status: 'Agendado' as ReceivingAppointment['status'],
     totalValue: '' as any,
     paymentTerm: ''
@@ -1746,6 +1748,7 @@ function ReceivingSchedule() {
       observation: '',
       collaborator: '',
       receivingLocation: 'Marsil',
+      receivingType: 'Recebimento',
       status: 'Agendado',
       totalValue: '' as any,
       paymentTerm: ''
@@ -1767,6 +1770,7 @@ function ReceivingSchedule() {
       observation: a.observation,
       collaborator: a.collaborator || '',
       receivingLocation: a.receivingLocation || 'Marsil',
+      receivingType: a.receivingType || 'Recebimento',
       status: a.status,
       totalValue: a.totalValue,
       paymentTerm: a.paymentTerm
@@ -1794,13 +1798,14 @@ function ReceivingSchedule() {
 
   const exportToCSV = () => {
     const headers = [
-      'DATA', 'LOCAL', 'RESPONSÁVEL', 'E-MAIL', 'SOLICITANTE', 'CONTATO', 'PEDIDO', 'FORNECEDOR',
+      'DATA', 'TIPO', 'LOCAL', 'RESPONSÁVEL', 'E-MAIL', 'SOLICITANTE', 'CONTATO', 'PEDIDO', 'FORNECEDOR',
       'VEÍCULO', 'PALET', 'AGENDADO', 'OBSERVAÇÃO', 'STATUS', 
       'VALOR TOTAL DA CARGA', 'PRAZO PAGAMENTO BOLETO'
     ];
     
     const rows = filteredAppointments.map(a => [
       a.date,
+      a.receivingType || 'Recebimento',
       a.receivingLocation || 'Marsil',
       a.collaborator || '-',
       a.staff || '-',
@@ -1839,7 +1844,8 @@ function ReceivingSchedule() {
     );
     const matchesStatus = filterStatus === 'all' ? true : a.status === filterStatus;
     const matchesLocation = filterLocation === 'all' ? true : a.receivingLocation === filterLocation;
-    return matchesDate && matchesStatus && matchesLocation;
+    const matchesReceivingType = filterReceivingType === 'all' ? true : a.receivingType === filterReceivingType;
+    return matchesDate && matchesStatus && matchesLocation && matchesReceivingType;
   });
   
   // Calculate conflicts
@@ -1973,6 +1979,16 @@ function ReceivingSchedule() {
             ))}
           </select>
           <select 
+            value={filterReceivingType}
+            onChange={(e) => setFilterReceivingType(e.target.value)}
+            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+          >
+            <option value="all">Todos os Tipos</option>
+            {RECEIVING_TYPES.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+          <select 
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
             className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
@@ -1995,6 +2011,7 @@ function ReceivingSchedule() {
                 setFilterType('all');
                 setFilterStatus('all');
                 setFilterLocation('all');
+                setFilterReceivingType('all');
               }}
               className="p-2 text-neutral-400 hover:text-blue-600 transition-colors"
               title="Limpar Filtros"
@@ -2099,6 +2116,20 @@ function ReceivingSchedule() {
                 </select>
               </div>
               <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">Tipo de Recebimento</label>
+                <select 
+                  required 
+                  value={formData.receivingType} 
+                  onChange={e => setFormData({...formData, receivingType: e.target.value as any})} 
+                  className="w-full px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none shadow-sm"
+                >
+                  <option value="">Selecione o Tipo...</option>
+                  {RECEIVING_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">E-mail</label>
                 <input type="email" placeholder="E-mail de contato" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
@@ -2196,6 +2227,7 @@ function ReceivingSchedule() {
             <thead className="bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 uppercase text-[10px] font-bold">
               <tr>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Tipo</th>
                 <th className="px-6 py-4">Local</th>
                 <th className="px-6 py-4">Responsável</th>
                 <th className="px-6 py-4">Datas</th>
@@ -2237,6 +2269,15 @@ function ReceivingSchedule() {
                           <option value="Recebido">Recebido</option>
                           <option value="Cancelado">Cancelado</option>
                         </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${
+                          a.receivingType === 'Recebimento' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                          a.receivingType === 'Retorno OP' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                          {a.receivingType || 'Recebimento'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${
@@ -2342,6 +2383,7 @@ function SchedulingDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().split('-').slice(0, 2).join('-')); // YYYY-MM
   const [selectedWeekIdx, setSelectedWeekIdx] = useState<number | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [selectedReceivingType, setSelectedReceivingType] = useState<string>('all');
 
   useEffect(() => {
     const q = query(collection(db, 'appointments'));
@@ -2385,6 +2427,10 @@ function SchedulingDashboard() {
       filtered = filtered.filter(a => a.receivingLocation === selectedLocation);
     }
 
+    if (selectedReceivingType !== 'all') {
+      filtered = filtered.filter(a => a.receivingType === selectedReceivingType);
+    }
+
     if (selectedWeekIdx === 'all') {
       return filtered.filter(a => a.date.startsWith(selectedMonth));
     }
@@ -2424,7 +2470,8 @@ function SchedulingDashboard() {
         const dayAppointments = appointments.filter(a => {
           const matchesDate = a.date === dateStr && !a.deleted;
           const matchesLocation = selectedLocation === 'all' || a.receivingLocation === selectedLocation;
-          return matchesDate && matchesLocation;
+          const matchesType = selectedReceivingType === 'all' || a.receivingType === selectedReceivingType;
+          return matchesDate && matchesLocation && matchesType;
         });
         const dayTotal = dayAppointments
             .filter(a => a.status === 'Agendado' || a.status === 'Aguardando' || a.status === 'Descarregando')
@@ -2439,7 +2486,7 @@ function SchedulingDashboard() {
         });
     }
     return days;
-  }, [selectedMonth, appointments, selectedLocation]);
+  }, [selectedMonth, appointments, selectedLocation, selectedReceivingType]);
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -2533,6 +2580,19 @@ function SchedulingDashboard() {
               <option value="all">Todas as Unidades</option>
               {RECEIVING_LOCATIONS.map(loc => (
                 <option key={loc} value={loc}>{loc}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1 flex-1">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase ml-1">Modalidade</label>
+            <select 
+              value={selectedReceivingType} 
+              onChange={e => setSelectedReceivingType(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Todas as Modalidades</option>
+              {RECEIVING_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
