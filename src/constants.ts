@@ -54,10 +54,13 @@ export const DEPARTMENTS: Record<DepartmentId, Department> = {
 
 export const VEHICLE_TYPES = [
   'Caminhão Baú',
-  'Sider',
   'VUC',
   'Carreta',
-  'Contêiner',
+  'Truck',
+  'Toco',
+  'Van',
+  'Fiorino',
+  'HR',
 ];
 
 export const RECEIVING_LOCATIONS = [
