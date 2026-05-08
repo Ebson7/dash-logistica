@@ -89,9 +89,10 @@
         "status": { "type": "string", "enum": ["Agendado", "Aguardando", "Descarregando", "Recebido", "Cancelado"] },
         "totalValue": { "type": "number" },
         "paymentTerm": { "type": "string" },
+        "receivingLocation": { "type": "string", "enum": ["Marsil", "OP. Logístico", "Boracéia", "Outro"] },
         "createdAt": { "type": "object" }
       },
-      "required": ["date", "creationDate", "staff", "requester", "orderNumber", "supplier", "vehicle", "scheduledTime"]
+      "required": ["date", "supplier", "collaborator", "receivingLocation"]
     },
     "Presence": {
       "title": "Presence",

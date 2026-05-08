@@ -59,3 +59,10 @@ export const VEHICLE_TYPES = [
   'Carreta',
   'Contêiner',
 ];
+
+export const RECEIVING_LOCATIONS = [
+  'Marsil',
+  'OP. Logístico',
+  'Boracéia',
+  'Outro',
+] as const;

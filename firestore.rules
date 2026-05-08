@@ -55,18 +55,18 @@ service cloud.firestore {
 
     function isValidAppointment(data) {
       return data.date is string && data.date.size() <= 20 &&
-             data.creationDate is string && data.creationDate.size() <= 30 &&
-             data.staff is string && data.staff.size() <= 100 &&
-             data.requester is string && data.requester.size() <= 100 &&
-             data.orderNumber is string && data.orderNumber.size() <= 50 &&
              data.supplier is string && data.supplier.size() <= 200 &&
-             data.vehicle is string && data.vehicle.size() <= 100 &&
-             data.scheduledTime is string && data.scheduledTime.size() <= 10 &&
-             data.observation is string && data.observation.size() <= 1000 &&
              data.collaborator is string && data.collaborator.size() <= 100 &&
-             (data.pallets is number || data.pallets == 0) &&
-             (data.totalValue is number || data.totalValue == 0) &&
-             (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado');
+             data.receivingLocation is string && (data.receivingLocation == 'Marsil' || data.receivingLocation == 'OP. Logístico' || data.receivingLocation == 'Boracéia' || data.receivingLocation == 'Outro') &&
+             (!('staff' in data) || (data.staff is string && data.staff.size() <= 100)) &&
+             (!('requester' in data) || (data.requester is string && data.requester.size() <= 100)) &&
+             (!('orderNumber' in data) || (data.orderNumber is string && data.orderNumber.size() <= 50)) &&
+             (!('vehicle' in data) || (data.vehicle is string && data.vehicle.size() <= 100)) &&
+             (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 10)) &&
+             (!('observation' in data) || (data.observation is string && data.observation.size() <= 1000)) &&
+             (!('pallets' in data) || (data.pallets is number)) &&
+             (!('totalValue' in data) || (data.totalValue is number)) &&
+             (!('status' in data) || (data.status is string && (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado')));
     }
 
     match /users/{userId} {

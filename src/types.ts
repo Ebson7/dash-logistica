@@ -60,6 +60,7 @@ export interface ReceivingAppointment {
   status: 'Agendado' | 'Aguardando' | 'Descarregando' | 'Recebido' | 'Cancelado';
   totalValue: number;
   paymentTerm: string;
+  receivingLocation: 'Marsil' | 'OP. Logístico' | 'Boracéia' | 'Outro';
   createdAt: number | Timestamp;
   deleted?: boolean;
 }

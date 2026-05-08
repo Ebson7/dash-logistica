@@ -13,7 +13,7 @@ import {
 import { doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile, DepartmentId, ReceivingAppointment } from './types';
-import { DEPARTMENTS, VEHICLE_TYPES } from './constants';
+import { DEPARTMENTS, VEHICLE_TYPES, RECEIVING_LOCATIONS } from './constants';
 import { 
   LayoutDashboard, 
   Package, 
@@ -1615,6 +1615,7 @@ function ReceivingSchedule() {
   const [filterDate, setFilterDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [filterType, setFilterType] = useState<'date' | 'creationDate' | 'all'>('date');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterLocation, setFilterLocation] = useState<string>('all');
   const [onlineUsers, setOnlineUsers] = useState(0);
   
   const [formData, setFormData] = useState({
@@ -1630,6 +1631,7 @@ function ReceivingSchedule() {
     scheduledTime: '',
     observation: '',
     collaborator: '',
+    receivingLocation: 'Marsil' as ReceivingAppointment['receivingLocation'],
     status: 'Agendado' as ReceivingAppointment['status'],
     totalValue: '' as any,
     paymentTerm: ''
@@ -1743,6 +1745,7 @@ function ReceivingSchedule() {
       scheduledTime: '',
       observation: '',
       collaborator: '',
+      receivingLocation: 'Marsil',
       status: 'Agendado',
       totalValue: '' as any,
       paymentTerm: ''
@@ -1763,6 +1766,7 @@ function ReceivingSchedule() {
       scheduledTime: a.scheduledTime,
       observation: a.observation,
       collaborator: a.collaborator || '',
+      receivingLocation: a.receivingLocation || 'Marsil',
       status: a.status,
       totalValue: a.totalValue,
       paymentTerm: a.paymentTerm
@@ -1790,15 +1794,16 @@ function ReceivingSchedule() {
 
   const exportToCSV = () => {
     const headers = [
-      'DATA', 'COLABORADOR', 'SOLICITANTE', 'CONTATO', 'PEDIDO', 'FORNECEDOR',
+      'DATA', 'LOCAL', 'RESPONSÁVEL', 'E-MAIL', 'SOLICITANTE', 'CONTATO', 'PEDIDO', 'FORNECEDOR',
       'VEÍCULO', 'PALET', 'AGENDADO', 'OBSERVAÇÃO', 'STATUS', 
       'VALOR TOTAL DA CARGA', 'PRAZO PAGAMENTO BOLETO'
     ];
     
     const rows = filteredAppointments.map(a => [
       a.date,
-      a.creationDate || '-',
-      a.collaborator || a.staff || '-',
+      a.receivingLocation || 'Marsil',
+      a.collaborator || '-',
+      a.staff || '-',
       a.requester,
       a.contact,
       a.orderNumber,
@@ -1833,7 +1838,8 @@ function ReceivingSchedule() {
       filterType === 'date' ? a.date === filterDate : (a.creationDate || '') === filterDate
     );
     const matchesStatus = filterStatus === 'all' ? true : a.status === filterStatus;
-    return matchesDate && matchesStatus;
+    const matchesLocation = filterLocation === 'all' ? true : a.receivingLocation === filterLocation;
+    return matchesDate && matchesStatus && matchesLocation;
   });
   
   // Calculate conflicts
@@ -1957,6 +1963,16 @@ function ReceivingSchedule() {
             <option value="Cancelado">Cancelado</option>
           </select>
           <select 
+            value={filterLocation}
+            onChange={(e) => setFilterLocation(e.target.value)}
+            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+          >
+            <option value="all">Todas as Unidades</option>
+            {RECEIVING_LOCATIONS.map(loc => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
+          <select 
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
             className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
@@ -1973,11 +1989,12 @@ function ReceivingSchedule() {
               className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
             />
           )}
-          {(filterType !== 'all' || filterStatus !== 'all') && (
+          {(filterType !== 'all' || filterStatus !== 'all' || filterLocation !== 'all') && (
             <button
               onClick={() => {
                 setFilterType('all');
                 setFilterStatus('all');
+                setFilterLocation('all');
               }}
               className="p-2 text-neutral-400 hover:text-blue-600 transition-colors"
               title="Limpar Filtros"
@@ -2042,16 +2059,16 @@ function ReceivingSchedule() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-neutral-400 uppercase">Data de Criação</label>
-                  <input required type="date" value={formData.creationDate} onChange={e => setFormData({...formData, creationDate: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 dark:text-white text-sm outline-none cursor-not-allowed" disabled />
+                  <input type="date" value={formData.creationDate} onChange={e => setFormData({...formData, creationDate: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800 dark:text-white text-sm outline-none cursor-not-allowed" disabled />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-neutral-400 uppercase">Data Agendada</label>
-                  <input required type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                  <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Agendado (Hora)</label>
-                <input required type="time" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <input type="time" value={formData.scheduledTime} onChange={e => setFormData({...formData, scheduledTime: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Colaborador Responsável</label>
@@ -2068,20 +2085,34 @@ function ReceivingSchedule() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-400 uppercase">Quem Atendeu</label>
-                <input required type="text" placeholder="Nome de quem atendeu" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <label className="text-xs font-bold text-neutral-400 uppercase">Local do Recebimento</label>
+                <select 
+                  required 
+                  value={formData.receivingLocation} 
+                  onChange={e => setFormData({...formData, receivingLocation: e.target.value as any})} 
+                  className="w-full px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none shadow-sm"
+                >
+                  <option value="">Selecione a Unidade...</option>
+                  {RECEIVING_LOCATIONS.map(loc => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-neutral-400 uppercase">E-mail</label>
+                <input type="email" placeholder="E-mail de contato" value={formData.staff} onChange={e => setFormData({...formData, staff: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Solicitante</label>
-                <input required type="text" value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <input type="text" value={formData.requester} onChange={e => setFormData({...formData, requester: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Contato</label>
-                <input required type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <input type="text" value={formData.contact} onChange={e => setFormData({...formData, contact: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Pedido</label>
-                <input required type="text" placeholder="Ex: 5412" value={formData.orderNumber} onChange={e => setFormData({...formData, orderNumber: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <input type="text" placeholder="Ex: 5412" value={formData.orderNumber} onChange={e => setFormData({...formData, orderNumber: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Fornecedor</label>
@@ -2089,7 +2120,7 @@ function ReceivingSchedule() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Veículo</label>
-                <select required value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none">
+                <select value={formData.vehicle} onChange={e => setFormData({...formData, vehicle: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none">
                   <option value="">Selecione...</option>
                   {VEHICLE_TYPES.map(vt => (
                     <option key={vt} value={vt}>{vt}</option>
@@ -2099,7 +2130,6 @@ function ReceivingSchedule() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Palets</label>
                 <input 
-                  required 
                   type="text" 
                   placeholder="Qtd. Paletes"
                   value={formData.pallets === 0 || formData.pallets === '' ? '' : formData.pallets} 
@@ -2115,7 +2145,6 @@ function ReceivingSchedule() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">R$</span>
                   <input 
-                    required 
                     type="text" 
                     placeholder="0,00"
                     value={formData.totalValue === 0 || formData.totalValue === '' ? '' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(formData.totalValue)} 
@@ -2134,7 +2163,7 @@ function ReceivingSchedule() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Prazo Pagamento Boleto</label>
-                <input required type="text" value={formData.paymentTerm} onChange={e => setFormData({...formData, paymentTerm: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
+                <input type="text" value={formData.paymentTerm} onChange={e => setFormData({...formData, paymentTerm: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none" />
               </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-xs font-bold text-neutral-400 uppercase">Observação</label>
@@ -2167,6 +2196,7 @@ function ReceivingSchedule() {
             <thead className="bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 uppercase text-[10px] font-bold">
               <tr>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Local</th>
                 <th className="px-6 py-4">Responsável</th>
                 <th className="px-6 py-4">Datas</th>
                 <th className="px-6 py-4">Horário</th>
@@ -2207,6 +2237,16 @@ function ReceivingSchedule() {
                           <option value="Recebido">Recebido</option>
                           <option value="Cancelado">Cancelado</option>
                         </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${
+                          a.receivingLocation === 'Marsil' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          a.receivingLocation === 'Boracéia' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                          a.receivingLocation === 'OP. Logístico' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          'bg-neutral-50 text-neutral-600 border-neutral-100'
+                        }`}>
+                          {a.receivingLocation || '-'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
@@ -2301,6 +2341,7 @@ function SchedulingDashboard() {
   const today = new Date().toISOString().split('T')[0];
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().split('-').slice(0, 2).join('-')); // YYYY-MM
   const [selectedWeekIdx, setSelectedWeekIdx] = useState<number | 'all'>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
 
   useEffect(() => {
     const q = query(collection(db, 'appointments'));
@@ -2338,24 +2379,24 @@ function SchedulingDashboard() {
   }, [selectedMonth]);
 
   const dashboardData = React.useMemo(() => {
+    let filtered = appointments.filter(a => !a.deleted && a.date);
+    
+    if (selectedLocation !== 'all') {
+      filtered = filtered.filter(a => a.receivingLocation === selectedLocation);
+    }
+
     if (selectedWeekIdx === 'all') {
-      return appointments.filter(a => {
-        if (a.deleted || !a.date) return false;
-        return a.date.startsWith(selectedMonth);
-      });
+      return filtered.filter(a => a.date.startsWith(selectedMonth));
     }
     
     const activeWeek = weeks[selectedWeekIdx];
     if (!activeWeek) return [];
 
-    return appointments.filter(a => {
-      if (a.deleted || !a.date) return false;
-      const aDateStr = a.date;
-      const startStr = activeWeek.start.toISOString().split('T')[0];
-      const endStr = activeWeek.end.toISOString().split('T')[0];
-      return aDateStr >= startStr && aDateStr <= endStr;
-    });
-  }, [appointments, selectedWeekIdx, weeks, selectedMonth]);
+    const startStr = activeWeek.start.toISOString().split('T')[0];
+    const endStr = activeWeek.end.toISOString().split('T')[0];
+
+    return filtered.filter(a => a.date >= startStr && a.date <= endStr);
+  }, [appointments, selectedWeekIdx, weeks, selectedMonth, selectedLocation]);
 
   const collaboratorData = React.useMemo(() => {
     const counts: Record<string, number> = { 'Michael': 0, 'Naldo': 0, 'Allan': 0 };
@@ -2380,7 +2421,11 @@ function SchedulingDashboard() {
     
     for (let i = 1; i <= lastDay; i++) {
         const dateStr = `${selectedMonth}-${String(i).padStart(2, '0')}`;
-        const dayAppointments = appointments.filter(a => a.date === dateStr && !a.deleted);
+        const dayAppointments = appointments.filter(a => {
+          const matchesDate = a.date === dateStr && !a.deleted;
+          const matchesLocation = selectedLocation === 'all' || a.receivingLocation === selectedLocation;
+          return matchesDate && matchesLocation;
+        });
         const dayTotal = dayAppointments
             .filter(a => a.status === 'Agendado' || a.status === 'Aguardando' || a.status === 'Descarregando')
             .reduce((sum, a) => sum + (a.totalValue || 0), 0);
@@ -2394,7 +2439,7 @@ function SchedulingDashboard() {
         });
     }
     return days;
-  }, [selectedMonth, appointments]);
+  }, [selectedMonth, appointments, selectedLocation]);
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -2475,6 +2520,19 @@ function SchedulingDashboard() {
               <option value="all">Todo o Mês</option>
               {weeks.map((w, idx) => (
                 <option key={idx} value={idx}>{w.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1 flex-1">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase ml-1">Unidade</label>
+            <select 
+              value={selectedLocation} 
+              onChange={e => setSelectedLocation(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Todas as Unidades</option>
+              {RECEIVING_LOCATIONS.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
               ))}
             </select>
           </div>
