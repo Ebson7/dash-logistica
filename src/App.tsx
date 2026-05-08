@@ -2147,7 +2147,7 @@ function ReceivingSchedule() {
                   <input 
                     type="text" 
                     placeholder="0,00"
-                    value={formData.totalValue === 0 || formData.totalValue === '' ? '' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(formData.totalValue)} 
+                    value={formData.totalValue === '' ? '' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(formData.totalValue)} 
                     onChange={e => {
                       const rawValue = e.target.value.replace(/\D/g, '');
                       if (rawValue === '') {
