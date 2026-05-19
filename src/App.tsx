@@ -53,7 +53,9 @@ import {
   Settings2,
   MessageSquare,
   BarChart3,
-  Trash2
+  Trash2,
+  Edit2,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -262,6 +264,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (password === correctPassword) {
         localStorage.setItem('selected_dept', departmentId);
+        const userDocRef = doc(db, 'users', auth.currentUser?.uid || 'anonymous');
+        await setDoc(userDocRef, {
+          uid: auth.currentUser?.uid || 'anonymous',
+          email: 'shared@logistica.com',
+          departmentId: departmentId,
+          displayName: departmentId === 'admin' ? 'Administrador' : (departmentId === 'viewer' ? 'Visualizador' : (DEPARTMENTS[departmentId as DepartmentId]?.name || 'Colaborador')),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
         setProfile({
           uid: auth.currentUser?.uid || 'anonymous',
           email: 'shared@logistica.com',
@@ -3003,8 +3014,14 @@ function SettingsView() {
     }
   };
 
+  const [editingType, setEditingType] = useState<string | null>(null);
+  const [editTypeValue, setEditTypeValue] = useState({ name: '', palletCapacity: 0 });
+
   const addVehicle = async () => {
-    if (!newVehicle.plate || !newVehicle.model) return;
+    if (!newVehicle.plate || !newVehicle.model || !newVehicle.type) {
+      alert("Por favor, preencha placa, modelo e tipo do veículo.");
+      return;
+    }
     const vehicle = { ...newVehicle, id: Math.random().toString(36).substr(2, 9) };
     const newSettings = {
       ...settings,
@@ -3019,7 +3036,10 @@ function SettingsView() {
   };
 
   const addVehicleType = async () => {
-    if (!newType.name) return;
+    if (!newType.name) {
+      alert("Por favor, informe o nome do tipo de veículo.");
+      return;
+    }
     const type = { ...newType, id: Math.random().toString(36).substr(2, 9) };
     const newSettings = {
       ...settings,
@@ -3033,7 +3053,27 @@ function SettingsView() {
     }
   };
 
+  const startEditType = (type: any) => {
+    setEditingType(type.id);
+    setEditTypeValue({ name: type.name, palletCapacity: type.palletCapacity });
+  };
+
+  const saveEditType = async () => {
+    if (!editingType) return;
+    const newConfig = (settings.vehicleConfig || []).map((t: any) => 
+      t.id === editingType ? { ...t, ...editTypeValue } : t
+    );
+    const newSettings = { ...settings, vehicleConfig: newConfig };
+    try {
+      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      setEditingType(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/global');
+    }
+  };
+
   const removeVehicleType = async (id: string) => {
+    if (!confirm("Deseja realmente remover este tipo de veículo?")) return;
     const newSettings = {
       ...settings,
       vehicleConfig: (settings.vehicleConfig || []).filter((t: any) => t.id !== id)
@@ -3046,6 +3086,7 @@ function SettingsView() {
   };
 
   const removeVehicle = async (id: string) => {
+    if (!confirm("Deseja realmente remover este veículo da frota?")) return;
     const newSettings = {
       ...settings,
       vehicles: (settings.vehicles || []).filter((v: any) => v.id !== id)
@@ -3285,16 +3326,59 @@ function SettingsView() {
             <div className="space-y-2 max-h-[300px] overflow-auto">
               {settings.vehicleConfig?.map((t: any) => (
                 <div key={t.id} className="flex items-center justify-between p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
-                  <div>
-                    <p className="font-bold text-sm dark:text-white">{t.name}</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.palletCapacity} Palets</p>
+                  {editingType === t.id ? (
+                    <div className="flex-1 grid grid-cols-2 gap-2 mr-2">
+                       <input 
+                        value={editTypeValue.name}
+                        onChange={(e) => setEditTypeValue({...editTypeValue, name: e.target.value})}
+                        className="px-2 py-1 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-xs text-neutral-900 dark:text-white"
+                      />
+                      <input 
+                        type="number"
+                        value={editTypeValue.palletCapacity}
+                        onChange={(e) => setEditTypeValue({...editTypeValue, palletCapacity: parseInt(e.target.value) || 0})}
+                        className="px-2 py-1 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-xs text-neutral-900 dark:text-white"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="font-bold text-sm dark:text-white">{t.name}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.palletCapacity} Palets</p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1">
+                    {editingType === t.id ? (
+                      <>
+                        <button 
+                          onClick={saveEditType}
+                          className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-lg"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button 
+                          onClick={() => setEditingType(null)}
+                          className="text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900/20 p-2 rounded-lg"
+                        >
+                          <X size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => startEditType(t)}
+                          className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => removeVehicleType(t.id)}
+                          className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
-                  <button 
-                    onClick={() => removeVehicleType(t.id)}
-                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
-                  >
-                    <X size={16} />
-                  </button>
                 </div>
               ))}
             </div>
@@ -3311,7 +3395,7 @@ function SettingsView() {
                   onClick={() => removeVehicle(v.id)}
                   className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
                 >
-                  <LogOut size={16} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             ))}
