@@ -10,7 +10,7 @@ import {
   signOut, 
   User 
 } from 'firebase/auth';
-import { doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, query, collection, orderBy, where, limit, addDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile, DepartmentId, ReceivingAppointment } from './types';
 import { DEPARTMENTS, VEHICLE_TYPES, RECEIVING_LOCATIONS, RECEIVING_TYPES } from './constants';
@@ -3018,17 +3018,13 @@ function SettingsView() {
   const [editTypeValue, setEditTypeValue] = useState({ name: '', palletCapacity: 0 });
 
   const addVehicle = async () => {
-    if (!newVehicle.plate || !newVehicle.model || !newVehicle.type) {
-      alert("Por favor, preencha placa, modelo e tipo do veículo.");
-      return;
-    }
+    if (!newVehicle.plate || !newVehicle.model || !newVehicle.type) return;
+    
     const vehicle = { ...newVehicle, id: Math.random().toString(36).substr(2, 9) };
-    const newSettings = {
-      ...settings,
-      vehicles: [...(settings.vehicles || []), vehicle]
-    };
+    const newVehicles = [...(settings?.vehicles || []), vehicle];
+    
     try {
-      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      await updateDoc(doc(db, 'settings', 'global'), { vehicles: newVehicles });
       setNewVehicle({ plate: '', model: '', type: '' });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
@@ -3036,17 +3032,13 @@ function SettingsView() {
   };
 
   const addVehicleType = async () => {
-    if (!newType.name) {
-      alert("Por favor, informe o nome do tipo de veículo.");
-      return;
-    }
+    if (!newType.name) return;
+    
     const type = { ...newType, id: Math.random().toString(36).substr(2, 9) };
-    const newSettings = {
-      ...settings,
-      vehicleConfig: [...(settings.vehicleConfig || []), type]
-    };
+    const newConfig = [...(settings?.vehicleConfig || []), type];
+    
     try {
-      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      await updateDoc(doc(db, 'settings', 'global'), { vehicleConfig: newConfig });
       setNewType({ name: '', palletCapacity: 0 });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
@@ -3063,9 +3055,8 @@ function SettingsView() {
     const newConfig = (settings.vehicleConfig || []).map((t: any) => 
       t.id === editingType ? { ...t, ...editTypeValue } : t
     );
-    const newSettings = { ...settings, vehicleConfig: newConfig };
     try {
-      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      await updateDoc(doc(db, 'settings', 'global'), { vehicleConfig: newConfig });
       setEditingType(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
@@ -3073,26 +3064,18 @@ function SettingsView() {
   };
 
   const removeVehicleType = async (id: string) => {
-    if (!confirm("Deseja realmente remover este tipo de veículo?")) return;
-    const newSettings = {
-      ...settings,
-      vehicleConfig: (settings.vehicleConfig || []).filter((t: any) => t.id !== id)
-    };
+    const newConfig = (settings.vehicleConfig || []).filter((t: any) => String(t.id) !== String(id));
     try {
-      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      await updateDoc(doc(db, 'settings', 'global'), { vehicleConfig: newConfig });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
   };
 
   const removeVehicle = async (id: string) => {
-    if (!confirm("Deseja realmente remover este veículo da frota?")) return;
-    const newSettings = {
-      ...settings,
-      vehicles: (settings.vehicles || []).filter((v: any) => v.id !== id)
-    };
+    const newVehicles = (settings.vehicles || []).filter((v: any) => String(v.id) !== String(id));
     try {
-      await setDoc(doc(db, 'settings', 'global'), newSettings);
+      await updateDoc(doc(db, 'settings', 'global'), { vehicles: newVehicles });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
