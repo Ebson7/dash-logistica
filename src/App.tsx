@@ -3163,7 +3163,7 @@ function SettingsView() {
   );
 
   return (
-    <div className="space-y-10 max-w-5xl">
+    <div className="space-y-10 w-full">
       <header>
         <h2 className="text-3xl font-bold text-neutral-900 dark:text-white">Configurações do Sistema</h2>
         <p className="text-neutral-500 dark:text-neutral-400 mt-1">Gerencie cargos, equipes e veículos</p>
@@ -3242,146 +3242,162 @@ function SettingsView() {
           </div>
         </section>
 
-        <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
+        <section className="lg:col-span-2 bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
           <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
             <Truck size={24} className="text-emerald-600 dark:text-emerald-400" />
             Frota de Veículos
           </h3>
           
-          <div className="bg-neutral-50 dark:bg-neutral-800 p-4 rounded-2xl space-y-4">
-            <p className="text-sm font-bold dark:text-white">Cadastrar Novo Veículo</p>
-            <div className="grid grid-cols-2 gap-3">
-              <input 
-                placeholder="Placa"
-                value={newVehicle.plate}
-                onChange={(e) => setNewVehicle({...newVehicle, plate: e.target.value.toUpperCase()})}
-                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
-              />
-              <input 
-                placeholder="Modelo"
-                value={newVehicle.model}
-                onChange={(e) => setNewVehicle({...newVehicle, model: e.target.value})}
-                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
-              />
-              <select 
-                value={newVehicle.type}
-                onChange={(e) => setNewVehicle({...newVehicle, type: e.target.value})}
-                className="col-span-2 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
-              >
-                <option value="">Selecione o Tipo</option>
-                {(settings.vehicleConfig || VEHICLE_TYPES.map(name => ({ name }))).map((t: any) => (
-                  <option key={t.id || t.name} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-            <button 
-              onClick={addVehicle}
-              className="w-full bg-emerald-600 text-white py-2 rounded-xl font-bold hover:bg-emerald-700 transition-all"
-            >
-              Adicionar Veículo
-            </button>
-          </div>
-
-          <div className="space-y-4 pt-6 border-t border-neutral-100 dark:border-neutral-800">
-            <h4 className="text-sm font-bold dark:text-white">Tipos de Veículos e Capacidades</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <input 
-                placeholder="Nome do Tipo (ex: Carreta)"
-                value={newType.name}
-                onChange={(e) => setNewType({...newType, name: e.target.value})}
-                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
-              />
-              <input 
-                type="number"
-                placeholder="Palets"
-                value={newType.palletCapacity || ''}
-                onChange={(e) => setNewType({...newType, palletCapacity: parseInt(e.target.value) || 0})}
-                className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
-              />
-              <button 
-                onClick={addVehicleType}
-                className="col-span-2 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-all"
-              >
-                Adicionar Tipo
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-[300px] overflow-auto">
-              {settings.vehicleConfig?.map((t: any) => (
-                <div key={t.id} className="flex items-center justify-between p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
-                  {editingType === t.id ? (
-                    <div className="flex-1 grid grid-cols-2 gap-2 mr-2">
-                       <input 
-                        value={editTypeValue.name}
-                        onChange={(e) => setEditTypeValue({...editTypeValue, name: e.target.value})}
-                        className="px-2 py-1 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-xs text-neutral-900 dark:text-white"
-                      />
-                      <input 
-                        type="number"
-                        value={editTypeValue.palletCapacity}
-                        onChange={(e) => setEditTypeValue({...editTypeValue, palletCapacity: parseInt(e.target.value) || 0})}
-                        className="px-2 py-1 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-xs text-neutral-900 dark:text-white"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="font-bold text-sm dark:text-white">{t.name}</p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.palletCapacity} Palets</p>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    {editingType === t.id ? (
-                      <>
-                        <button 
-                          onClick={saveEditType}
-                          className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-lg"
-                        >
-                          <Check size={16} />
-                        </button>
-                        <button 
-                          onClick={() => setEditingType(null)}
-                          className="text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900/20 p-2 rounded-lg"
-                        >
-                          <X size={16} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button 
-                          onClick={() => startEditType(t)}
-                          className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          onClick={() => removeVehicleType(t.id)}
-                          className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2 max-h-[400px] overflow-auto">
-            {settings.vehicles?.map((v: any) => (
-              <div key={v.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
-                <div>
-                  <p className="font-bold text-sm dark:text-white">{v.plate}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{v.model} • {v.type}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="bg-neutral-50 dark:bg-neutral-800 p-4 rounded-2xl space-y-4">
+                <p className="text-sm font-bold dark:text-white">Cadastrar Novo Veículo</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    placeholder="Placa"
+                    value={newVehicle.plate}
+                    onChange={(e) => setNewVehicle({...newVehicle, plate: e.target.value.toUpperCase()})}
+                    className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                  />
+                  <input 
+                    placeholder="Modelo"
+                    value={newVehicle.model}
+                    onChange={(e) => setNewVehicle({...newVehicle, model: e.target.value})}
+                    className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                  />
+                  <select 
+                    value={newVehicle.type}
+                    onChange={(e) => setNewVehicle({...newVehicle, type: e.target.value})}
+                    className="col-span-2 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                  >
+                    <option value="">Selecione o Tipo</option>
+                    {(settings.vehicleConfig || VEHICLE_TYPES.map(name => ({ name }))).map((t: any) => (
+                      <option key={t.id || t.name} value={t.name}>{t.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <button 
-                  onClick={() => removeVehicle(v.id)}
-                  className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
+                  onClick={addVehicle}
+                  className="w-full bg-emerald-600 text-white py-2 rounded-xl font-bold hover:bg-emerald-700 transition-all"
                 >
-                  <Trash2 size={16} />
+                  Adicionar Veículo
                 </button>
               </div>
-            ))}
+
+              <div className="space-y-2 max-h-[400px] overflow-auto">
+                <h4 className="text-xs font-bold text-neutral-400 uppercase ml-1">Veículos na Frota</h4>
+                {settings.vehicles?.map((v: any) => (
+                  <div key={v.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-700">
+                    <div>
+                      <p className="font-bold text-sm dark:text-white">{v.plate}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{v.model} • {v.type}</p>
+                    </div>
+                    <button 
+                      onClick={() => removeVehicle(v.id)}
+                      className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {(!settings.vehicles || settings.vehicles.length === 0) && (
+                  <p className="text-center py-4 text-xs text-neutral-400 bg-neutral-50 dark:bg-neutral-800 rounded-xl italic">
+                    Nenhum veículo cadastrado na frota.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-neutral-50 dark:bg-neutral-800 p-4 rounded-2xl space-y-4 shadow-sm border border-blue-50 dark:border-blue-900/20">
+                <h4 className="text-sm font-bold dark:text-white flex items-center gap-2">
+                  <Package size={16} className="text-blue-500" />
+                  Tipos de Veículos e Capacidades
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    placeholder="Nome do Tipo (ex: Carreta)"
+                    value={newType.name}
+                    onChange={(e) => setNewType({...newType, name: e.target.value})}
+                    className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                  />
+                  <input 
+                    type="number"
+                    placeholder="Palets"
+                    value={newType.palletCapacity || ''}
+                    onChange={(e) => setNewType({...newType, palletCapacity: parseInt(e.target.value) || 0})}
+                    className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none"
+                  />
+                  <button 
+                    onClick={addVehicleType}
+                    className="col-span-2 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-all text-sm"
+                  >
+                    Adicionar Tipo
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-[400px] overflow-auto">
+                <h4 className="text-xs font-bold text-neutral-400 uppercase ml-1">Tipos Configurados</h4>
+                {settings.vehicleConfig?.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl">
+                    {editingType === t.id ? (
+                      <div className="flex-1 grid grid-cols-2 gap-2 mr-2">
+                        <input 
+                          value={editTypeValue.name}
+                          onChange={(e) => setEditTypeValue({...editTypeValue, name: e.target.value})}
+                          className="px-2 py-1 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-xs text-neutral-900 dark:text-white"
+                        />
+                        <input 
+                          type="number"
+                          value={editTypeValue.palletCapacity}
+                          onChange={(e) => setEditTypeValue({...editTypeValue, palletCapacity: parseInt(e.target.value) || 0})}
+                          className="px-2 py-1 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-xs text-neutral-900 dark:text-white"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="font-bold text-sm dark:text-white">{t.name}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.palletCapacity} Palets</p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      {editingType === t.id ? (
+                        <>
+                          <button 
+                            onClick={saveEditType}
+                            className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-lg"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setEditingType(null)}
+                            className="text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900/20 p-2 rounded-lg"
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => startEditType(t)}
+                            className="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-lg"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => removeVehicleType(t.id)}
+                            className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </div>
