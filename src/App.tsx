@@ -2240,10 +2240,9 @@ function ReceivingSchedule() {
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Tipo</th>
                 <th className="px-6 py-4">Local</th>
-                <th className="px-6 py-4">Responsável</th>
                 <th className="px-6 py-4">Datas</th>
-                <th className="px-6 py-4">Horário</th>
-                <th className="px-6 py-4">Pedido/Fornecedor</th>
+                <th className="px-6 py-4">Pedido</th>
+                <th className="px-6 py-4">Fornecedor</th>
                 <th className="px-6 py-4">Veículo</th>
                 <th className="px-6 py-4">Solicitante</th>
                 <th className="px-6 py-4">Palets</th>
@@ -2254,7 +2253,7 @@ function ReceivingSchedule() {
             <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
               {filteredAppointments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-neutral-400 dark:text-neutral-500 italic">Nenhum agendamento para esta data.</td>
+                  <td colSpan={11} className="px-6 py-10 text-center text-neutral-400 dark:text-neutral-500 italic">Nenhum agendamento para esta data.</td>
                 </tr>
               ) : (
                 filteredAppointments.map(a => {
@@ -2302,15 +2301,14 @@ function ReceivingSchedule() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
-                          <p className="text-xs font-black dark:text-white uppercase">{a.collaborator || '-'}</p>
-                          <p className="text-[10px] text-neutral-400 font-medium">{a.staff || 'N/A'}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-neutral-400">AGENDA:</span>
                             <span className="text-xs font-black dark:text-white">{a.date.split('-').reverse().join('/')}</span>
+                            {conflict && (
+                              <div className="p-1 bg-amber-100 text-amber-600 rounded-lg tooltip inline-flex items-center" title="Conflito de Horário">
+                                <AlertCircle size={10} />
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-neutral-400">CRIADO:</span>
@@ -2318,19 +2316,15 @@ function ReceivingSchedule() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold dark:text-white">{a.scheduledTime}</span>
-                          {conflict && (
-                            <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg tooltip" title="Conflito de Horário">
-                              <AlertCircle size={14} />
-                            </div>
-                          )}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 rounded-lg text-[10px] font-black uppercase border bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/40">
+                          {a.orderNumber || '-'}
+                        </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="font-bold dark:text-white">{a.orderNumber}</p>
-                        <p className="text-[10px] text-neutral-500 font-medium uppercase truncate max-w-[150px]">{a.supplier}</p>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase border bg-neutral-50 text-neutral-600 border-neutral-100 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700 max-w-[170px] truncate inline-block align-middle animate-fade-in" title={a.supplier}>
+                          {a.supplier || '-'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 dark:text-neutral-300">{a.vehicle}</td>
                       <td className="px-6 py-4">
