@@ -348,13 +348,21 @@ function LoginPage() {
             <select 
               value={dept}
               onChange={(e: any) => setDept(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
             >
-              <option value="admin">Administrador</option>
-              <option value="viewer">Visualizador (Somente Leitura)</option>
-              {Object.values(DEPARTMENTS).map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
+              <optgroup label="Acesso Geral">
+                <option value="admin">Administrador</option>
+                <option value="viewer">Visualizador (Somente Leitura)</option>
+              </optgroup>
+              <optgroup label="Setores Operacionais">
+                <option value="recebimento">Recebimento</option>
+                <option value="estoque">Estoque</option>
+                <option value="romaneio_tarde">Romaneio Tarde</option>
+                <option value="romaneio_noturno">Romaneio Noturno</option>
+                <option value="exp_loja">Exp. Loja</option>
+                <option value="boraceia">Filial Boracéia</option>
+                <option value="veiculos">Veículos</option>
+              </optgroup>
             </select>
           </div>
 
