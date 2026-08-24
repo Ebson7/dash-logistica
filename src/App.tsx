@@ -55,9 +55,12 @@ import {
   BarChart3,
   Trash2,
   Edit2,
-  Check
+  Check,
+  FileSpreadsheet,
+  Table
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AgendaPlanilhaView } from './components/AgendaPlanilhaView';
 
 // --- Error Handling ---
 
@@ -390,6 +393,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'recebimento', name: 'Recebimento', icon: Download },
+    { id: 'agenda_planilha', name: 'Agenda Planilha', icon: FileSpreadsheet },
     { id: 'estoque', name: 'Estoque', icon: Package },
     { id: 'romaneio_tarde', name: 'Romaneio Tarde', icon: ClipboardList },
     { id: 'romaneio_noturno', name: 'Romaneio Noturno', icon: ClipboardList },
@@ -404,8 +408,8 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
   const filteredMenu = profile?.departmentId === 'admin'
     ? menuItems 
     : profile?.departmentId === 'viewer'
-      ? menuItems.filter(item => item.id === 'dashboard')
-      : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId);
+      ? menuItems.filter(item => item.id === 'dashboard' || item.id === 'agenda_planilha')
+      : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId || (profile?.departmentId === 'recebimento' && item.id === 'agenda_planilha'));
 
   return (
     <>
@@ -689,7 +693,8 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'recebimento' && <RecebimentoView initialSubTab={activeSubTab} />}
+              {activeTab === 'recebimento' && <RecebimentoView initialSubTab={activeSubTab} onNavigateToPlanilha={() => setActiveTab('agenda_planilha')} />}
+              {activeTab === 'agenda_planilha' && <AgendaPlanilhaView isViewer={profile?.departmentId === 'viewer'} />}
               {activeTab === 'estoque' && <EstoqueView />}
               {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
               {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
@@ -1000,14 +1005,6 @@ function DashboardView() {
     };
   });
 
-  const inventoryChartData = [
-    { name: 'Capacidade Total', value: estoqueCapacity, fill: '#3b82f6' },
-    { name: 'Palets no Chão', value: paletsNoChao, fill: '#f59e0b' },
-    { name: 'Palets Disponíveis', value: estoqueAvailable, fill: '#10b981' }
-  ];
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
   return (
     <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 dark:bg-neutral-950 overflow-auto' : 'space-y-10'}`}>
       <NewsTicker occurrences={allOccurrences} isTVMode={isTVMode} />
@@ -1103,29 +1100,7 @@ function DashboardView() {
             ))}
           </div>
 
-          <div className={`grid gap-8 ${isTVMode ? 'grid-cols-2' : 'grid-cols-1 xl:grid-cols-2'}`}>
-            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
-              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg'}`}>Comparecimento (%)</h3>
-              <div className={isTVMode ? 'h-[400px]' : 'h-64 sm:h-72 md:h-80'}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} interval={0} angle={-15} textAnchor="end" />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} unit="%" />
-                    <Tooltip 
-                      cursor={{fill: '#f9fafb'}}
-                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '12px' : '11px'}}
-                    />
-                    <Bar dataKey="percent" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={isTVMode ? 60 : 30}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.percent < 70 ? '#ef4444' : entry.percent < 90 ? '#f59e0b' : '#10b981'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
+          <div className="w-full">
             <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
               <div className="flex justify-between items-start mb-6">
                 <h3 className={`font-bold dark:text-white ${isTVMode ? 'text-xl' : 'text-base sm:text-lg'}`}>Ocupação Estoque</h3>
@@ -1175,28 +1150,6 @@ function DashboardView() {
                     ({estoqueAvailable} disponíveis)
                   </p>
                 </div>
-              </div>
-            </div>
-
-            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
-              <h3 className={`font-bold mb-6 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg'}`}>Métricas de Inventário</h3>
-              <div className={isTVMode ? 'h-[400px]' : 'h-64 sm:h-72 md:h-80'}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={inventoryChartData} layout="vertical" margin={{ left: isTVMode ? 30 : 10, right: 30, top: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: isTVMode ? 12 : 10}} width={isTVMode ? 150 : 100} />
-                    <Tooltip 
-                      cursor={{fill: '#f9fafb'}}
-                      contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: isTVMode ? '12px' : '11px'}}
-                    />
-                    <Bar dataKey="value" name="Quantidade" radius={[0, 6, 6, 0]} barSize={isTVMode ? 40 : 25}>
-                      {inventoryChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
               </div>
             </div>
           </div>
@@ -2712,56 +2665,59 @@ function SchedulingDashboard() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-        <h3 className="text-lg font-bold mb-6 flex items-center justify-between dark:text-white uppercase tracking-tight">
+      <div className="bg-white dark:bg-neutral-900 p-4 sm:p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+        <h3 className="text-lg font-bold mb-6 flex flex-col sm:flex-row sm:items-center justify-between dark:text-white uppercase tracking-tight gap-2">
           <div className="flex items-center gap-2">
             <Calendar size={20} className="text-blue-600" />
             Visão Grade Mensal
           </div>
-          <span className="text-neutral-400 text-[10px] font-normal lowercase italic">Legenda: vlr. agendado / status por cor</span>
+          <span className="text-neutral-500 dark:text-neutral-400 text-[10px] font-normal lowercase italic">Legenda: vlr. agendado / status por cor</span>
         </h3>
         
-        <div className="grid grid-cols-7 gap-px bg-neutral-100 dark:bg-neutral-800 p-px rounded-2xl overflow-hidden shadow-inner">
-          {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
-            <div key={d} className="bg-neutral-50 dark:bg-neutral-800/50 p-2 text-center text-[10px] font-bold text-neutral-400 uppercase">{d}</div>
-          ))}
-          {calendarDays.map((day, idx) => (
-            <div 
-              key={idx} 
-              className={`min-h-[100px] p-3 bg-white dark:bg-neutral-900 flex flex-col gap-1 transition-all ${day ? 'hover:bg-blue-50/30' : 'bg-neutral-50/30'}`}
-            >
-              {day && (
-                <>
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs font-bold text-neutral-400">{day.day}</span>
-                    {day.count > 0 && (
-                      <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full ring-1 ring-blue-200">
-                        {day.count}
-                      </span>
-                    )}
-                  </div>
-                  {day.value > 0 && (
-                    <div className="mt-auto">
-                      <p className="text-[9px] font-black text-blue-600 truncate">R$ {(day.value/1000).toFixed(1)}k</p>
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div className="min-w-[560px] grid grid-cols-7 gap-px bg-neutral-200 dark:bg-neutral-800 p-px rounded-2xl overflow-hidden shadow-inner">
+            {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
+              <div key={d} className="bg-neutral-100 dark:bg-neutral-800/90 p-2 text-center text-[10px] font-bold text-neutral-600 dark:text-neutral-300 uppercase">{d}</div>
+            ))}
+            {calendarDays.map((day, idx) => (
+              <div 
+                key={idx} 
+                className={`min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 bg-white dark:bg-neutral-900 flex flex-col gap-1 transition-all ${day ? 'hover:bg-blue-50/40 dark:hover:bg-neutral-800/60' : 'bg-neutral-50/50 dark:bg-neutral-950/40'}`}
+              >
+                {day && (
+                  <>
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300">{day.day}</span>
+                      {day.count > 0 && (
+                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-200 text-[9px] font-black px-1.5 py-0.5 rounded-full ring-1 ring-blue-300 dark:ring-blue-800">
+                          {day.count}
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <div className="flex gap-1 mt-1">
-                    {day.received > 0 && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm" title={`${day.received} Recebidos`}></div>}
-                    {day.cancelled > 0 && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" title={`${day.cancelled} Cancelados`}></div>}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+                    {day.value > 0 && (
+                      <div className="mt-auto">
+                        <p className="text-[10px] font-black text-blue-700 dark:text-blue-400 truncate">R$ {(day.value/1000).toFixed(1)}k</p>
+                      </div>
+                    )}
+                    <div className="flex gap-1 mt-1">
+                      {day.received > 0 && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm" title={`${day.received} Recebidos`}></div>}
+                      {day.cancelled > 0 && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" title={`${day.cancelled} Cancelados`}></div>}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function RecebimentoView({ initialSubTab = 'operation' }: { initialSubTab?: 'operation' | 'schedule' | 'dashboard' }) {
+function RecebimentoView({ initialSubTab = 'operation', onNavigateToPlanilha }: { initialSubTab?: 'operation' | 'schedule' | 'planilha' | 'dashboard'; onNavigateToPlanilha?: () => void }) {
+  const { profile } = useAuth();
   const [settings, setSettings] = useState<any>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'operation' | 'schedule' | 'dashboard'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'operation' | 'schedule' | 'planilha' | 'dashboard'>(initialSubTab);
 
   useEffect(() => {
     // Sync subtab if prop changes (e.g. clicking from sidebar when already in Recebimento tab)
@@ -2792,6 +2748,13 @@ function RecebimentoView({ initialSubTab = 'operation' }: { initialSubTab?: 'ope
           Agenda de Recebimento
         </button>
         <button 
+          onClick={() => setActiveSubTab('planilha')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'planilha' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+        >
+          <FileSpreadsheet size={16} />
+          Planilha Interativa (Nova)
+        </button>
+        <button 
           onClick={() => setActiveSubTab('dashboard')}
           className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
         >
@@ -2811,6 +2774,8 @@ function RecebimentoView({ initialSubTab = 'operation' }: { initialSubTab?: 'ope
         />
       ) : activeSubTab === 'schedule' ? (
         <ReceivingSchedule />
+      ) : activeSubTab === 'planilha' ? (
+        <AgendaPlanilhaView isViewer={profile?.departmentId === 'viewer'} />
       ) : (
         <SchedulingDashboard />
       )}
