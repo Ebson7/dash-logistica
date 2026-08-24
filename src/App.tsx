@@ -57,7 +57,8 @@ import {
   Edit2,
   Check,
   FileSpreadsheet,
-  Table
+  Table,
+  Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AgendaPlanilhaView } from './components/AgendaPlanilhaView';
@@ -398,6 +399,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
     { id: 'romaneio_tarde', name: 'Romaneio Tarde', icon: ClipboardList },
     { id: 'romaneio_noturno', name: 'Romaneio Noturno', icon: ClipboardList },
     { id: 'exp_loja', name: 'Exp. Loja', icon: ClipboardList },
+    { id: 'boraceia', name: 'Boracéia', icon: Building2 },
     { id: 'veiculos', name: 'Veículos', icon: Truck },
   ];
 
@@ -699,6 +701,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
               {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
               {activeTab === 'exp_loja' && <ExpLojaView />}
+              {activeTab === 'boraceia' && <BoraceiaView />}
               {activeTab === 'veiculos' && <VeiculosView />}
               {activeTab === 'settings' && <SettingsView />}
             </motion.div>
@@ -934,8 +937,22 @@ function DashboardView() {
 
   const totalStaffPresent = logs.reduce((sum, log) => sum + (log.staffPresent || 0), 0);
   const totalOccurrences = logs.reduce((sum, log) => sum + (log.occurrences?.length || 0), 0);
-  const totalFolhas = logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.folhas || 0;
   const totalDrivers = logs.find(l => l.departmentId === 'veiculos')?.data?.driversCount || 0;
+  
+  const boraceiaLog = logs.find(l => l.departmentId === 'boraceia');
+  const boraceiaStaffPresent = boraceiaLog?.staffPresent || 0;
+  const boraceiaTotalStaff = settings?.departments?.boraceia?.totalStaff ?? DEPARTMENTS.boraceia.totalStaff;
+  const boraceiaStaffByRole = boraceiaLog?.staffByRole || {};
+  const boraceiaOrders = boraceiaLog?.data?.ordersCount || 0;
+  const boraceiaFolhas = boraceiaLog?.data?.folhas || 0;
+  const boraceiaRoles = settings?.departments?.boraceia?.roles?.length ? settings.departments.boraceia.roles : DEPARTMENTS.boraceia.roles;
+  const boraceiaPercent = boraceiaTotalStaff > 0 ? Math.round((boraceiaStaffPresent / boraceiaTotalStaff) * 100) : 0;
+
+  const totalFolhas = (logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.folhas || 0) + boraceiaFolhas;
+  const totalOrders = (logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + 
+    (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + 
+    (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0) + 
+    boraceiaOrders;
   
   const recebimentoLog = logs.find(l => l.departmentId === 'recebimento');
   const vehiclesReceived = recebimentoLog?.data?.vehiclesReceived || 0;
@@ -998,6 +1015,7 @@ function DashboardView() {
     const percent = totalStaff > 0 ? Math.round((presente / totalStaff) * 100) : 0;
     
     return {
+      id: dept.id,
       name: dept.name,
       presente,
       total: totalStaff,
@@ -1077,27 +1095,138 @@ function DashboardView() {
             <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} isTVMode={isTVMode} />
             <StatCard title={`Veículos Recebidos (${filterDate.split('-').reverse().join('/')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" isTVMode={isTVMode} />
             <StatCard title="Palets Previstos" value={totalPaletsPrevistos} icon={Package} colorClass="bg-amber-50 text-amber-600" isTVMode={isTVMode} />
-            <StatCard title="Pedidos do Dia" value={(logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0)} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" isTVMode={isTVMode} />
+            <StatCard title="Pedidos do Dia" value={totalOrders} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" isTVMode={isTVMode} />
             <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" isTVMode={isTVMode} />
             <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" isTVMode={isTVMode} />
           </div>
 
-          <div className={`grid gap-3 sm:gap-4 ${isTVMode ? 'grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'}`}>
-            {chartData.map((dept, idx) => (
-              <div key={idx} className={`bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center transition-all ${isTVMode ? 'p-3 rounded-2xl' : 'p-3 sm:p-4 rounded-2xl'}`}>
-                <span className={`font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1 ${isTVMode ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'}`}>{dept.name}</span>
-                <div className="flex items-baseline gap-1">
-                  <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg sm:text-xl'}`}>{dept.presente}</span>
-                  <span className={`text-neutral-400 dark:text-neutral-500 font-medium ${isTVMode ? 'text-[9px]' : 'text-[10px] sm:text-xs'}`}>/ {dept.total}</span>
+          <div className={`grid gap-3 sm:gap-4 ${isTVMode ? 'grid-cols-7' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7'}`}>
+            {chartData.map((dept, idx) => {
+              const isBoraceia = dept.id === 'boraceia';
+              return (
+                <div 
+                  key={idx} 
+                  className={`border shadow-sm flex flex-col items-center text-center transition-all ${
+                    isBoraceia 
+                      ? 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-400 dark:border-amber-500/60 ring-1 ring-amber-400/40' 
+                      : 'bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800'
+                  } ${isTVMode ? 'p-3 rounded-2xl' : 'p-3 sm:p-4 rounded-2xl'}`}
+                >
+                  <div className="flex items-center gap-1 mb-1">
+                    {isBoraceia && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+                    <span className={`font-bold uppercase ${isBoraceia ? 'text-amber-700 dark:text-amber-400 font-black' : 'text-neutral-400 dark:text-neutral-500'} ${isTVMode ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'}`}>
+                      {dept.name}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-xl' : 'text-lg sm:text-xl'}`}>{dept.presente}</span>
+                    <span className={`text-neutral-400 dark:text-neutral-500 font-medium ${isTVMode ? 'text-[9px]' : 'text-[10px] sm:text-xs'}`}>/ {dept.total}</span>
+                  </div>
+                  <div className={`w-full bg-neutral-100 dark:bg-neutral-800 rounded-full mt-3 overflow-hidden ${isTVMode ? 'h-2' : 'h-1 sm:h-1.5'}`}>
+                    <div 
+                      className={`h-full transition-all duration-500 ${dept.percent < 70 ? 'bg-red-500' : dept.percent < 90 ? 'bg-orange-500' : 'bg-emerald-500'}`}
+                      style={{ width: `${dept.percent}%` }}
+                    />
+                  </div>
                 </div>
-                <div className={`w-full bg-neutral-100 dark:bg-neutral-800 rounded-full mt-3 overflow-hidden ${isTVMode ? 'h-2' : 'h-1 sm:h-1.5'}`}>
+              );
+            })}
+          </div>
+
+          {/* Destaque Filial Boracéia */}
+          <div className={`rounded-3xl border-2 border-amber-400/90 dark:border-amber-500/60 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-yellow-50/70 dark:from-amber-950/40 dark:via-neutral-900/90 dark:to-amber-950/20 shadow-md shadow-amber-500/5 overflow-hidden ${isTVMode ? 'p-8' : 'p-5 sm:p-7'}`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-sm">
+                      Filial Boracéia
+                    </span>
+                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      Painel em Destaque
+                    </span>
+                  </div>
+                  <h3 className={`font-black text-neutral-900 dark:text-white mt-1 ${isTVMode ? 'text-2xl' : 'text-xl'}`}>
+                    Indicadores Operacionais - Filial Boracéia
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 bg-amber-100/80 dark:bg-amber-900/50 px-3.5 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-800 dark:text-amber-300">
+                <Users size={16} />
+                <span>Presença: {boraceiaStaffPresent}/{boraceiaTotalStaff} ({boraceiaPercent}%)</span>
+              </div>
+            </div>
+
+            <div className={`grid gap-4 ${isTVMode ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'} mb-6`}>
+              <div className="bg-white/90 dark:bg-neutral-900/90 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">Total Colaboradores</p>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-3xl font-black text-neutral-900 dark:text-white">{boraceiaStaffPresent}</span>
+                      <span className="text-sm font-semibold text-neutral-400">/ {boraceiaTotalStaff}</span>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl text-amber-600 dark:text-amber-400">
+                    <Users size={24} />
+                  </div>
+                </div>
+                <div className="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full h-2 mt-3 overflow-hidden">
                   <div 
-                    className={`h-full transition-all duration-500 ${dept.percent < 70 ? 'bg-red-500' : dept.percent < 90 ? 'bg-orange-500' : 'bg-emerald-500'}`}
-                    style={{ width: `${dept.percent}%` }}
+                    className={`h-full transition-all duration-500 ${boraceiaPercent < 70 ? 'bg-red-500' : boraceiaPercent < 90 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${boraceiaPercent}%` }}
                   />
                 </div>
               </div>
-            ))}
+
+              <div className="bg-white/90 dark:bg-neutral-900/90 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">Quantidade de Pedidos</p>
+                    <p className="text-3xl font-black text-neutral-900 dark:text-white mt-1">{boraceiaOrders}</p>
+                  </div>
+                  <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl text-orange-600 dark:text-orange-400">
+                    <ClipboardList size={24} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-3 font-medium">Pedidos registrados no dia</p>
+              </div>
+
+              <div className="bg-white/90 dark:bg-neutral-900/90 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">Quantidade de Folhas</p>
+                    <p className="text-3xl font-black text-neutral-900 dark:text-white mt-1">{boraceiaFolhas}</p>
+                  </div>
+                  <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
+                    <Newspaper size={24} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-3 font-medium">Volume de folhas do dia</p>
+              </div>
+            </div>
+
+            <div className="bg-white/80 dark:bg-neutral-900/80 p-5 rounded-2xl border border-amber-200/60 dark:border-amber-800/40">
+              <h4 className="text-xs font-black uppercase text-neutral-700 dark:text-neutral-300 tracking-wider mb-3 flex items-center gap-2">
+                <Users size={14} className="text-amber-600 dark:text-amber-400" />
+                Colaboradores por Função - Filial Boracéia
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+                {boraceiaRoles.map((role: string) => {
+                  const count = boraceiaStaffByRole[role] || 0;
+                  return (
+                    <div key={role} className="bg-amber-50/70 dark:bg-neutral-800/70 border border-amber-200/60 dark:border-neutral-700/60 p-2.5 rounded-xl text-center">
+                      <span className="block text-[10px] font-bold text-neutral-600 dark:text-neutral-400 truncate" title={role}>{role}</span>
+                      <span className="text-lg font-black text-neutral-900 dark:text-white">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="w-full">
@@ -2828,6 +2957,17 @@ function ExpLojaView() {
   />;
 }
 
+function BoraceiaView() {
+  return <DepartmentView 
+    departmentId="boraceia" 
+    title="Boracéia" 
+    fields={[
+      { name: 'ordersCount', label: 'Quantidade de Pedidos', type: 'number' },
+      { name: 'folhas', label: 'Quantidade de Folhas', type: 'number' }
+    ]} 
+  />;
+}
+
 function VeiculosView() {
   const [settings, setSettings] = useState<any>(null);
 
@@ -3170,7 +3310,7 @@ function SettingsView() {
                     <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Total Equipe</label>
                     <input 
                       type="number"
-                      value={settings.departments?.[dept.id]?.totalStaff || 0}
+                      value={settings.departments?.[dept.id]?.totalStaff ?? dept.totalStaff}
                       onChange={(e) => updateDeptStaff(dept.id, parseInt(e.target.value))}
                       className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -3179,7 +3319,7 @@ function SettingsView() {
                     <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Cargos (separados por vírgula)</label>
                     <input 
                       type="text"
-                      defaultValue={settings.departments?.[dept.id]?.roles?.join(', ') || ''}
+                      defaultValue={settings.departments?.[dept.id]?.roles?.join(', ') || dept.roles.join(', ')}
                       onBlur={(e) => updateDeptRoles(dept.id, e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                     />

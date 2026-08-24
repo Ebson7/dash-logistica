@@ -43,6 +43,13 @@ export const DEPARTMENTS: Record<DepartmentId, Department> = {
     icon: 'ClipboardList',
     roles: ['Separador', 'Conferente de Carga', 'Auxiliar de Expedição'],
   },
+  boraceia: {
+    id: 'boraceia',
+    name: 'Boracéia',
+    totalStaff: 15,
+    icon: 'Building2',
+    roles: ['Separador', 'Conferente', 'Limpeza', 'Faturista', 'Supervisor', 'Estoquista', 'Empilhador'],
+  },
   viewer: {
     id: 'viewer',
     name: 'Visualizador',
