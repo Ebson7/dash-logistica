@@ -131,3 +131,87 @@ export interface CipaMember {
   updatedAt?: number | Timestamp;
 }
 
+export interface InventoryAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  category: 'Aviso Geral' | 'Regra de Ouro' | 'Procedimento' | 'Cronograma' | 'Segurança';
+  isPinned?: boolean;
+  author: string;
+  date: string;
+  createdAt: number;
+}
+
+export interface InventoryProcess {
+  id: string;
+  title: string;
+  stepNumber: number;
+  stage: '1ª Contagem (Cega)' | '2ª Contagem (Confronto)' | '3ª Contagem (Auditoria)' | 'Corte & WMS' | 'Ajuste ERP' | 'Organização';
+  description: string;
+  responsible: string;
+  mandatoryRules: string[];
+  tips?: string;
+}
+
+export interface InventoryTeamMember {
+  name: string;
+  role: 'Líder de Rua' | 'Contador' | 'Digitador / RF' | 'Auditor' | 'Suporte / Empilhador';
+  badgeOrPhone?: string;
+}
+
+export interface InventoryStructureTeam {
+  id: string;
+  teamName: string;
+  zone: string;
+  shift: 'Diurno' | 'Noturno' | 'Madrugada' | 'Integral';
+  leader: string;
+  members: InventoryTeamMember[];
+  equipment: string[];
+  status: 'Confirmado' | 'Pendente' | 'Em Ajuste';
+}
+
+export interface InventoryDocument {
+  id: string;
+  title: string;
+  description: string;
+  category: 'Manual' | 'Cronograma' | 'Mapeamento' | 'POP / Norma' | 'Planilha de Apoio' | 'Outro';
+  fileName: string;
+  fileSize?: string;
+  fileData?: string;
+  fileUrl?: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
+export interface InventoryPhase {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: 'Concluído' | 'Em Andamento' | 'Planejado' | 'Pendente';
+  description: string;
+  progressPercent: number;
+}
+
+export interface InventoryConfigData {
+  id?: string;
+  title: string;
+  targetDate: string;
+  targetTime?: string;
+  status: 'Planejamento Inicial' | 'Preparação & Treinamento' | 'Auditoria Prévia' | 'Inventário em Andamento' | 'Reconciliação Final' | 'Inventário Concluído';
+  accuracyGoal: number;
+  estimatedItems: number;
+  estimatedPositions: number;
+  coordinator: string;
+  coCoordinator?: string;
+  description: string;
+  guidelinesSummary: string;
+  announcements: InventoryAnnouncement[];
+  processes: InventoryProcess[];
+  structure: InventoryStructureTeam[];
+  documents: InventoryDocument[];
+  phases: InventoryPhase[];
+  updatedAt?: string;
+  updatedBy?: string;
+}
+

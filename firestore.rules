@@ -108,6 +108,11 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    match /inventory_2027/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -61,11 +61,13 @@ import {
   Building2,
   ShieldCheck,
   CheckCircle2,
-  Save
+  Save,
+  Boxes
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AgendaPlanilhaView } from './components/AgendaPlanilhaView';
 import { CipaView } from './components/CipaView';
+import InventarioGeralView from './components/InventarioGeralView';
 import { OccurrenceChatbot } from './components/OccurrenceChatbot';
 import { ExternalLinksMenu } from './components/ExternalLinksMenu';
 import { VeiculosView } from './components/VeiculosView';
@@ -415,6 +417,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
     { id: 'exp_loja', name: 'Exp. Loja', icon: ClipboardList, category: 'ops' },
     { id: 'boraceia', name: 'Filial Boracéia', icon: Building2, category: 'ops' },
     { id: 'veiculos', name: 'Veículos', icon: Truck, category: 'ops' },
+    { id: 'inventario_geral', name: 'Inventário Geral', icon: Boxes, category: 'mgmt' },
     { id: 'cipa', name: 'CIPA', icon: ShieldCheck, category: 'mgmt' },
   ];
 
@@ -425,8 +428,8 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
   const filteredMenu = profile?.departmentId === 'admin'
     ? allMenuItems 
     : profile?.departmentId === 'viewer'
-      ? allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'recebimento' || item.id === 'cipa')
-      : allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'cipa' || item.id === profile?.departmentId);
+      ? allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'recebimento' || item.id === 'cipa' || item.id === 'inventario_geral')
+      : allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'cipa' || item.id === 'inventario_geral' || item.id === profile?.departmentId);
 
   const categories: { key: 'main' | 'ops' | 'mgmt'; label: string }[] = [
     { key: 'main', label: 'Geral' },
@@ -747,6 +750,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               {activeTab === 'exp_loja' && <ExpLojaView />}
               {activeTab === 'boraceia' && <BoraceiaView />}
               {activeTab === 'veiculos' && <VeiculosView profile={profile} />}
+              {activeTab === 'inventario_geral' && <InventarioGeralView />}
               {activeTab === 'cipa' && <CipaView />}
               {activeTab === 'settings' && <SettingsView />}
             </motion.div>
