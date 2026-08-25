@@ -332,7 +332,7 @@ export function CipaView() {
   const departmentsList = Array.from(new Set(members.map(m => m.department))).filter(Boolean);
 
   return (
-    <div className="space-y-8">
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
       {/* Toast Notification */}
       <AnimatePresence>
         {successToast && (

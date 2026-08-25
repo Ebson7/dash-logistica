@@ -1689,252 +1689,394 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
     }
   };
 
+  const todayOccurrences = logs.find(l => l.date === today)?.occurrences || [];
+  const criticalOccurrencesCount = todayOccurrences.filter((o: any) => o.isCritical || o.severity === 'high').length;
+  const attendanceRate = totalStaff > 0 ? Math.min(100, Math.round((staffPresent / totalStaff) * 100)) : 0;
+
   return (
-    <div className="max-w-4xl space-y-8">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white">{title}</h2>
-          <p className="text-neutral-500 dark:text-neutral-400 mt-1 text-sm md:text-base">Gestão diária do departamento</p>
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-800/40">
+            <Users size={28} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
+                Operação do Dia
+              </span>
+              <span className="text-xs font-semibold text-neutral-400">Setor {title}</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mt-1">{title}</h2>
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm">Gestão de equipe, métricas operacionais e registro de ocorrências</p>
+          </div>
         </div>
-        <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2">
-          <Calendar size={16} />
-          {new Date().toLocaleDateString('pt-BR')}
+
+        <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-end">
+          <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm">
+            <Calendar size={16} className="text-blue-600 dark:text-blue-400" />
+            <span>{new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+          </div>
         </div>
       </header>
+
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-tight">Presença Total</p>
+            <Users size={16} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">{staffPresent}</span>
+            <span className="text-xs text-neutral-400 font-semibold">de {totalStaff} previstos</span>
+          </div>
+          <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div 
+              className="bg-blue-600 h-full rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, attendanceRate)}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-tight">Taxa de Presença</p>
+            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${attendanceRate >= 90 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : attendanceRate >= 70 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'}`}>
+              {attendanceRate >= 90 ? 'Normal' : attendanceRate >= 70 ? 'Atenção' : 'Baixa'}
+            </span>
+          </div>
+          <div className="mt-2">
+            <span className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">{attendanceRate}%</span>
+          </div>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-2">
+            {totalStaff - staffPresent > 0 ? `${totalStaff - staffPresent} colaboradores ausentes` : 'Quadro 100% preenchido'}
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-tight">Ocorrências Hoje</p>
+            <AlertCircle size={16} className={todayOccurrences.length > 0 ? 'text-amber-600' : 'text-neutral-400'} />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className={`text-2xl sm:text-3xl font-black ${todayOccurrences.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-900 dark:text-white'}`}>
+              {todayOccurrences.length}
+            </span>
+            {criticalOccurrencesCount > 0 && (
+              <span className="text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 px-1.5 py-0.5 rounded-md">
+                {criticalOccurrencesCount} crítica(s)
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-2">
+            {todayOccurrences.length === 0 ? 'Nenhuma anormalidade registrada' : 'Requer acompanhamento do líder'}
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-tight">Status Operação</p>
+            <div className={`w-2.5 h-2.5 rounded-full ${criticalOccurrencesCount > 0 ? 'bg-red-500 animate-ping' : todayOccurrences.length > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+          </div>
+          <div className="mt-2">
+            <span className={`text-lg sm:text-xl font-black ${criticalOccurrencesCount > 0 ? 'text-red-600 dark:text-red-400' : todayOccurrences.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+              {criticalOccurrencesCount > 0 ? 'Atenção Crítica' : todayOccurrences.length > 0 ? 'Com Ocorrências' : 'Operação Estável'}
+            </span>
+          </div>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-2">
+            Último salvamento: {logs.find(l => l.date === today)?.updatedAt ? 'Registrado hoje' : 'Pendente de envio'}
+          </p>
+        </div>
+      </div>
 
       {customBanner && (
         <div>{customBanner}</div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-8">
-          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
-              <Users size={20} className="text-blue-600 dark:text-blue-400" />
-              Dados de Operação
-            </h3>
+      {/* Main Grid: Form on Left (7 cols) + Side Actions & History on Right (5 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Operations Form */}
+        <div className="lg:col-span-7 space-y-8">
+          <section className="bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between pb-6 border-b border-neutral-100 dark:border-neutral-800 mb-6">
+              <h3 className="text-lg font-bold flex items-center gap-2.5 dark:text-white">
+                <Users size={22} className="text-blue-600 dark:text-blue-400" />
+                Dados de Operação e Equipe
+              </h3>
+              <span className="text-xs font-semibold text-neutral-400">Campos obrigatórios</span>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">Total Colaboradores Presentes</label>
+              <div>
+                <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-200 mb-2">
+                  Total Colaboradores Presentes
+                </label>
+                <div className="relative">
                   <input 
                     type="number" 
                     value={staffPresent}
                     disabled={isViewer}
-                    onChange={(e) => setStaffPresent(parseInt(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    onChange={(e) => setStaffPresent(parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   />
-                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-2">Total do departamento: {totalStaff}</p>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400 bg-neutral-100 dark:bg-neutral-700 px-2.5 py-1 rounded-lg">
+                    Quadro total: {totalStaff}
+                  </span>
                 </div>
               </div>
 
               <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6">
-                <h4 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Colaboradores por Cargo</h4>
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-white mb-3 flex items-center justify-between">
+                  <span>Colaboradores por Cargo</span>
+                  <span className="text-xs font-normal text-neutral-400">Distribuição no turno</span>
+                </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {roles.map((role: string) => (
-                    <div key={role}>
-                      <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{role}</label>
+                    <div key={role} className="bg-neutral-50 dark:bg-neutral-800/60 p-3.5 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                      <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-300 mb-1.5">{role}</label>
                       <input 
                         type="number"
                         value={staffByRole[role] || 0}
                         disabled={isViewer}
-                        onChange={(e) => setStaffByRole({...staffByRole, [role]: parseInt(e.target.value)})}
-                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                        onChange={(e) => setStaffByRole({...staffByRole, [role]: parseInt(e.target.value) || 0})}
+                        className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6">
-                <h4 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Métricas Específicas</h4>
-                <div className="space-y-4">
-                  {fields.map(field => (
-                    <div key={field.name}>
-                      <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">{field.label}</label>
-                      {field.type === 'number' ? (
-                        <input 
-                          type="number" 
-                          value={extraData[field.name] || 0}
-                          disabled={isViewer}
-                          onChange={(e) => setExtraData({...extraData, [field.name]: parseInt(e.target.value)})}
-                          className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                        />
-                      ) : field.type === 'multiselect' ? (
-                        <div className="flex flex-wrap gap-2">
-                          {field.options.map((opt: string) => (
-                            <button
-                              key={opt}
-                              type="button"
-                              disabled={isViewer}
-                              onClick={() => {
-                                const current = extraData[field.name] || [];
-                                const next = current.includes(opt) ? current.filter((i: string) => i !== opt) : [...current, opt];
-                                setExtraData({...extraData, [field.name]: next});
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                (extraData[field.name] || []).includes(opt)
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                              } disabled:opacity-60 disabled:cursor-not-allowed`}
-                            >
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                      ) : field.type === 'counter-list' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {field.options.map((opt: string) => (
-                            <div key={opt}>
-                              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{opt}</label>
-                              <input 
-                                type="number"
-                                value={(extraData[field.name] || {})[opt] || 0}
+              {fields.length > 0 && (
+                <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6">
+                  <h4 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Métricas Operacionais do Setor</h4>
+                  <div className="space-y-4">
+                    {fields.map(field => (
+                      <div key={field.name} className="bg-neutral-50 dark:bg-neutral-800/40 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800/80">
+                        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">{field.label}</label>
+                        {field.type === 'number' ? (
+                          <input 
+                            type="number" 
+                            value={extraData[field.name] || 0}
+                            disabled={isViewer}
+                            onChange={(e) => setExtraData({...extraData, [field.name]: parseInt(e.target.value) || 0})}
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                          />
+                        ) : field.type === 'multiselect' ? (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {field.options.map((opt: string) => (
+                              <button
+                                key={opt}
+                                type="button"
                                 disabled={isViewer}
-                                onChange={(e) => {
-                                  const current = extraData[field.name] || {};
-                                  const val = parseInt(e.target.value) || 0;
-                                  const next = {...current, [opt]: val};
-                                  
-                                  // Auto-calculate total if it's vehiclesByType
-                                  let nextExtraData = {...extraData, [field.name]: next};
-                                  if (field.name === 'vehiclesByType') {
-                                    const total = Object.values(next).reduce((a: any, b: any) => a + b, 0) as number;
-                                    nextExtraData.vehiclesReceived = total;
-                                  }
-                                  
-                                  setExtraData(nextExtraData);
+                                onClick={() => {
+                                  const current = extraData[field.name] || [];
+                                  const next = current.includes(opt) ? current.filter((i: string) => i !== opt) : [...current, opt];
+                                  setExtraData({...extraData, [field.name]: next});
                                 }}
-                                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                  (extraData[field.name] || []).includes(opt)
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                                } disabled:opacity-60 disabled:cursor-not-allowed`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        ) : field.type === 'counter-list' ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                            {field.options.map((opt: string) => (
+                              <div key={opt} className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-200/80 dark:border-neutral-800">
+                                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{opt}</label>
+                                <input 
+                                  type="number"
+                                  value={(extraData[field.name] || {})[opt] || 0}
+                                  disabled={isViewer}
+                                  onChange={(e) => {
+                                    const current = extraData[field.name] || {};
+                                    const val = parseInt(e.target.value) || 0;
+                                    const next = {...current, [opt]: val};
+                                    
+                                    // Auto-calculate total if it's vehiclesByType
+                                    let nextExtraData = {...extraData, [field.name]: next};
+                                    if (field.name === 'vehiclesByType') {
+                                      const total = Object.values(next).reduce((a: any, b: any) => a + b, 0) as number;
+                                      nextExtraData.vehiclesReceived = total;
+                                    }
+                                    
+                                    setExtraData(nextExtraData);
+                                  }}
+                                  className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {!isViewer && (
-                <motion.button 
-                  type="submit" 
-                  disabled={saveStatus === 'saving'}
-                  whileTap={{ scale: 0.98 }}
-                  animate={
-                    saveStatus === 'saved' 
-                      ? { scale: [1, 1.02, 1] } 
-                      : {}
-                  }
-                  className={`w-full py-4 px-6 rounded-2xl font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 ${
-                    saveStatus === 'saved' 
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30' 
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
-                  } disabled:opacity-60`}
-                >
-                  {saveStatus === 'saving' ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="animate-spin" size={19} />
-                      <span>Salvando Dados do Dia...</span>
-                    </div>
-                  ) : saveStatus === 'saved' ? (
-                    <motion.div 
-                      initial={{ scale: 0.85, opacity: 0 }} 
-                      animate={{ scale: 1, opacity: 1 }} 
-                      className="flex items-center gap-2 text-white"
-                    >
-                      <CheckCircle2 size={22} className="animate-bounce" />
-                      <span className="text-base font-black">Dados Salvos com Sucesso! ✓</span>
-                    </motion.div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Save size={19} />
-                      <span>Salvar Dados do Dia</span>
-                    </div>
-                  )}
-                </motion.button>
+                <div className="pt-2">
+                  <motion.button 
+                    type="submit" 
+                    disabled={saveStatus === 'saving'}
+                    whileTap={{ scale: 0.98 }}
+                    animate={
+                      saveStatus === 'saved' 
+                        ? { scale: [1, 1.02, 1] } 
+                        : {}
+                    }
+                    className={`w-full py-4 px-6 rounded-2xl font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 ${
+                      saveStatus === 'saved' 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30' 
+                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
+                    } disabled:opacity-60 cursor-pointer`}
+                  >
+                    {saveStatus === 'saving' ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="animate-spin" size={19} />
+                        <span>Salvando Dados do Dia...</span>
+                      </div>
+                    ) : saveStatus === 'saved' ? (
+                      <motion.div 
+                        initial={{ scale: 0.85, opacity: 0 }} 
+                        animate={{ scale: 1, opacity: 1 }} 
+                        className="flex items-center gap-2 text-white"
+                      >
+                        <CheckCircle2 size={22} className="animate-bounce" />
+                        <span className="text-base font-black">Dados Salvos com Sucesso! ✓</span>
+                      </motion.div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Save size={19} />
+                        <span>Salvar Dados do Dia</span>
+                      </div>
+                    )}
+                  </motion.button>
+                </div>
               )}
             </form>
           </section>
+        </div>
 
+        {/* Right Column: Occurrences & History */}
+        <div className="lg:col-span-5 space-y-8">
           {!isViewer && (
-            <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
-                <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
-                Registrar Ocorrência
-              </h3>
+            <section className="bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800 mb-6">
+                <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 dark:text-white">
+                  <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
+                  Registrar Ocorrência
+                </h3>
+                <span className="text-[10px] font-bold uppercase bg-red-50 dark:bg-red-950/50 text-red-600 px-2 py-0.5 rounded-full">
+                  Registro em Tempo Real
+                </span>
+              </div>
               <div className="space-y-4">
-                <input 
-                  type="text"
-                  placeholder="Título da ocorrência (ex: Atraso de Veículo)"
-                  value={occurrenceTitle}
-                  onChange={(e) => setOccurrenceTitle(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                />
-                <textarea 
-                  placeholder="Descreva os detalhes..."
-                  value={occurrence}
-                  onChange={(e) => setOccurrence(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-all min-h-[100px]"
-                />
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="flex w-full sm:w-auto gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-1">Título</label>
+                  <input 
+                    type="text"
+                    placeholder="Ex: Falha em equipamento, atraso..."
+                    value={occurrenceTitle}
+                    onChange={(e) => setOccurrenceTitle(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none text-sm transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-1">Descrição</label>
+                  <textarea 
+                    placeholder="Descreva detalhadamente o ocorrido..."
+                    value={occurrence}
+                    onChange={(e) => setOccurrence(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none text-sm transition-all min-h-[90px]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-1">Gravidade</label>
                     <select 
                       value={severity}
                       onChange={(e: any) => setSeverity(e.target.value)}
-                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-xs font-semibold outline-none"
                     >
-                      <option value="low">Gravidade Baixa</option>
-                      <option value="medium">Gravidade Média</option>
-                      <option value="high">Gravidade Alta</option>
+                      <option value="low">Baixa</option>
+                      <option value="medium">Média</option>
+                      <option value="high">Alta</option>
                     </select>
-                    
-                    <label className="flex items-center gap-2 cursor-pointer bg-neutral-50 dark:bg-neutral-800 px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-1">Alerta Crítico</label>
+                    <label className="flex items-center justify-center gap-2 cursor-pointer bg-neutral-50 dark:bg-neutral-800 px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 h-[38px]">
                       <input 
                         type="checkbox" 
                         checked={isCritical}
                         onChange={(e) => setIsCritical(e.target.checked)}
                         className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                       />
-                      <span className={`text-xs font-bold uppercase ${isCritical ? 'text-red-600 animate-pulse' : 'text-neutral-400'}`}>Crítico</span>
+                      <span className={`text-xs font-bold uppercase ${isCritical ? 'text-red-600 animate-pulse' : 'text-neutral-500'}`}>Crítico</span>
                     </label>
                   </div>
-                  
-                  <button 
-                    onClick={addOccurrence}
-                    disabled={!occurrenceTitle || !occurrence}
-                    className="w-full sm:w-auto flex-1 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 py-2.5 rounded-xl font-bold hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Plus size={18} />
-                    Adicionar
-                  </button>
                 </div>
+
+                <button 
+                  type="button"
+                  onClick={addOccurrence}
+                  disabled={!occurrenceTitle || !occurrence}
+                  className="w-full mt-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-neutral-900 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm cursor-pointer"
+                >
+                  <Plus size={18} />
+                  Adicionar Ocorrência
+                </button>
               </div>
             </section>
           )}
-        </div>
 
-        <div className="space-y-8">
-          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 dark:text-white">
-              <History size={20} className="text-neutral-400 dark:text-neutral-500" />
-              Ocorrências de Hoje
-            </h3>
-            <OccurrenceList occurrences={logs.find(l => l.date === today)?.occurrences || []} />
+          <section className="bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800 mb-6">
+              <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 dark:text-white">
+                <History size={20} className="text-neutral-400 dark:text-neutral-500" />
+                Ocorrências de Hoje
+              </h3>
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                {todayOccurrences.length}
+              </span>
+            </div>
+            <OccurrenceList occurrences={todayOccurrences} />
           </section>
 
-          <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
-            <h3 className="text-lg font-bold mb-6 dark:text-white">Histórico Recente</h3>
-            <div className="space-y-4">
-              {logs.filter(l => l.date !== today).map((log, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-all cursor-default">
-                  <div>
-                    <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{new Date(log.date).toLocaleDateString('pt-BR')}</p>
-                    <p className="text-xs text-neutral-400 dark:text-neutral-500">{log.staffPresent} presentes</p>
+          <section className="bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800 mb-6">
+              <h3 className="text-base sm:text-lg font-bold dark:text-white flex items-center gap-2">
+                <Calendar size={18} className="text-blue-600" />
+                Histórico Recente
+              </h3>
+              <span className="text-xs text-neutral-400">Últimos 5 dias</span>
+            </div>
+            <div className="space-y-3">
+              {logs.filter(l => l.date !== today).length === 0 ? (
+                <p className="text-xs text-neutral-400 italic text-center py-4">Nenhum histórico anterior registrado.</p>
+              ) : (
+                logs.filter(l => l.date !== today).map((log, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-2xl transition-all cursor-default border border-neutral-100 dark:border-neutral-800">
+                    <div>
+                      <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                        {new Date(log.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                      </p>
+                      <p className="text-xs text-neutral-400 dark:text-neutral-500">{log.staffPresent} presentes • {(log.occurrences || []).length} ocorrência(s)</p>
+                    </div>
+                    <ChevronRight size={16} className="text-neutral-400 dark:text-neutral-600" />
                   </div>
-                  <ChevronRight size={16} className="text-neutral-300 dark:text-neutral-700" />
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
         </div>
@@ -2227,7 +2369,7 @@ function ReceivingSchedule() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
       {saveSuccess && (
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -2240,64 +2382,71 @@ function ReceivingSchedule() {
         </motion.div>
       )}
 
-      {/* Summary Dashboard */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      {/* Summary Dashboard Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-neutral-400 uppercase mb-1">Agendamentos</p>
+          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-tight mb-1">Total</p>
           <p className="text-2xl font-black dark:text-white">{stats.total}</p>
         </div>
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-neutral-600 uppercase mb-1">Agendado</p>
-          <p className="text-2xl font-black text-neutral-500">{stats.scheduled}</p>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-tight mb-1">Agendados</p>
+          <p className="text-2xl font-black text-neutral-700 dark:text-neutral-300">{stats.scheduled}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm text-amber-500">
-          <p className="text-[10px] font-bold uppercase mb-1">Aguardando</p>
-          <p className="text-2xl font-black">{stats.waiting}</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-amber-100/50 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tight mb-1">Aguardando</p>
+          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{stats.waiting}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm text-blue-500">
-          <p className="text-[10px] font-bold uppercase mb-1">Em Descarga</p>
-          <p className="text-2xl font-black">{stats.unloading}</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-blue-100/50 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight mb-1">Descarga</p>
+          <p className="text-2xl font-black text-blue-600 dark:text-blue-400">{stats.unloading}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm text-emerald-500">
-          <p className="text-[10px] font-bold uppercase mb-1">Recebidos</p>
-          <p className="text-2xl font-black">{stats.received}</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-emerald-100/50 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight mb-1">Recebidos</p>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.received}</p>
+        </div>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-purple-100/50 dark:border-neutral-800 shadow-sm">
+          <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-tight mb-1">Paletes</p>
+          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">{stats.totalPallets}</p>
         </div>
         <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-purple-500 uppercase mb-1">Total Paletes</p>
-          <p className="text-2xl font-black text-purple-600">{stats.totalPallets}</p>
-        </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-          <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Vlr. Agendado</p>
+          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tight mb-1">Vlr. Agendado</p>
           <p className="text-sm font-black dark:text-white">R$ {stats.monthScheduled.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-emerald-100/50 dark:shadow-none">
-          <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Vlr. Recebido</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-950/40 shadow-sm">
+          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tight mb-1">Vlr. Recebido</p>
           <p className="text-sm font-black text-emerald-600">R$ {stats.monthReceived.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
         </div>
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm shadow-red-100/50 dark:shadow-none">
-          <p className="text-[10px] font-bold text-red-600 uppercase mb-1">Vlr. Cancelado</p>
+        <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-red-100 dark:border-red-950/40 shadow-sm col-span-2 sm:col-span-1">
+          <p className="text-[10px] font-bold text-red-600 uppercase tracking-tight mb-1">Vlr. Cancelado</p>
           <p className="text-sm font-black text-red-600">R$ {stats.monthCancelled.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
-            <Calendar size={24} className="text-blue-600" />
-            Agenda de Recebimento
-          </h3>
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-full border border-blue-100 dark:border-blue-800/50">
-            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
-              {onlineUsers} {onlineUsers === 1 ? 'Usuário Online' : 'Usuários Online'}
-            </span>
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white dark:bg-neutral-900 p-4 sm:p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <Calendar size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-black dark:text-white">
+                Grade de Agendamentos
+              </h3>
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-full border border-blue-100 dark:border-blue-800/50">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
+                  {onlineUsers} online
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-400">Controle de horários de doca e recebimento</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
           <select 
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+            className="px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white text-xs font-semibold outline-none"
           >
             <option value="all">Todos os Status</option>
             <option value="Agendado">Agendado</option>
@@ -2309,7 +2458,7 @@ function ReceivingSchedule() {
           <select 
             value={filterLocation}
             onChange={(e) => setFilterLocation(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+            className="px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white text-xs font-semibold outline-none"
           >
             <option value="all">Todas as Unidades</option>
             {RECEIVING_LOCATIONS.map(loc => (
@@ -2319,7 +2468,7 @@ function ReceivingSchedule() {
           <select 
             value={filterReceivingType}
             onChange={(e) => setFilterReceivingType(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+            className="px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white text-xs font-semibold outline-none"
           >
             <option value="all">Todos os Tipos</option>
             {RECEIVING_TYPES.map(type => (
@@ -2329,7 +2478,7 @@ function ReceivingSchedule() {
           <select 
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+            className="px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white text-xs font-semibold outline-none"
           >
             <option value="date">Data Agendada</option>
             <option value="creationDate">Data de Criação</option>
@@ -2340,7 +2489,7 @@ function ReceivingSchedule() {
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 dark:text-white text-sm outline-none"
+              className="px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 dark:text-white text-xs font-semibold outline-none"
             />
           )}
           {(filterType !== 'all' || filterStatus !== 'all' || filterLocation !== 'all') && (
@@ -2354,7 +2503,7 @@ function ReceivingSchedule() {
               className="p-2 text-neutral-400 hover:text-blue-600 transition-colors"
               title="Limpar Filtros"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           )}
           {!isViewer && (
@@ -2364,17 +2513,17 @@ function ReceivingSchedule() {
                 setEditingId(null);
                 setIsAdding(true);
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-all text-sm"
+              className="bg-blue-600 text-white px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 hover:bg-blue-700 transition-all text-xs shadow-sm cursor-pointer"
             >
-              <Plus size={18} />
+              <Plus size={16} />
               Agendar
             </button>
           )}
           <button 
             onClick={exportToCSV}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all text-sm"
+            className="bg-emerald-600 text-white px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 hover:bg-emerald-700 transition-all text-xs shadow-sm cursor-pointer"
           >
-            <FileDown size={18} />
+            <FileDown size={16} />
             Exportar
           </button>
         </div>
@@ -2874,7 +3023,7 @@ function SchedulingDashboard() {
   }, [selectedWeekIdx, weeks, selectedMonth, dashboardData]);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
       <div className="flex flex-col md:flex-row gap-4 items-end justify-between bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <div className="space-y-1 flex-1">
@@ -3107,30 +3256,30 @@ function RecebimentoView({ initialSubTab = 'operation', onNavigateToPlanilha }: 
   const vehicleOptions = settings?.vehicleConfig?.map((t: any) => t.name) || VEHICLE_TYPES;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center gap-2 sm:gap-4 border-b border-neutral-100 dark:border-neutral-800 p-1">
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800">
         <button 
           onClick={() => setActiveSubTab('operation')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'operation' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${activeSubTab === 'operation' ? 'bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 shadow-sm border border-neutral-200/60 dark:border-neutral-700' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'}`}
         >
           Operação do Dia
         </button>
         <button 
           onClick={() => setActiveSubTab('schedule')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'schedule' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${activeSubTab === 'schedule' ? 'bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 shadow-sm border border-neutral-200/60 dark:border-neutral-700' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'}`}
         >
           Agenda de Recebimento
         </button>
         <button 
           onClick={() => setActiveSubTab('planilha')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'planilha' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'planilha' ? 'bg-emerald-600 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'}`}
         >
-          <FileSpreadsheet size={16} />
-          Planilha Interativa (Nova)
+          <FileSpreadsheet size={15} />
+          Planilha Interativa
         </button>
         <button 
           onClick={() => setActiveSubTab('dashboard')}
-          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSubTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${activeSubTab === 'dashboard' ? 'bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 shadow-sm border border-neutral-200/60 dark:border-neutral-700' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'}`}
         >
           Dashboard Agenda
         </button>
@@ -3535,10 +3684,22 @@ function SettingsView() {
   );
 
   return (
-    <div className="space-y-10 w-full">
-      <header>
-        <h2 className="text-3xl font-bold text-neutral-900 dark:text-white">Configurações do Sistema</h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-1">Gerencie cargos, equipes e veículos</p>
+    <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center justify-center shrink-0 border border-neutral-200/60 dark:border-neutral-700">
+            <Settings2 size={28} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">
+                Administração
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mt-1">Configurações do Sistema</h2>
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm">Gerencie senhas de acesso, relatórios, parâmetros de setores e frota de veículos</p>
+          </div>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

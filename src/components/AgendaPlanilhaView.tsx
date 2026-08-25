@@ -405,7 +405,7 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
   };
 
   return (
-    <div className="space-y-6 w-full font-sans pb-16">
+    <div className="w-full max-w-7xl mx-auto space-y-6 font-sans pb-16">
       {/* Toast notification */}
       <AnimatePresence>
         {saveSuccess && (
