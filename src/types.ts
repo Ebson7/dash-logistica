@@ -67,6 +67,18 @@ export interface ReceivingAppointment {
   deleted?: boolean;
 }
 
+export interface BoraceiaShipment {
+  id: string;
+  vehiclePlate?: string;
+  vehicleModel?: string;
+  paletsCount: number;
+  driverName: string;
+  departureTime: string;
+  arrivalTimeSP: string;
+  status?: 'Agendado' | 'Em Trânsito' | 'Descarregando' | 'Em Retorno SP' | 'Finalizado';
+  observation?: string;
+}
+
 export interface DailyLog {
   id: string;
   date: string; // YYYY-MM-DD
@@ -86,6 +98,8 @@ export interface DailyLog {
     availablePositions?: number;
     paletsNoChao?: number;
     folhas?: number;
+    boraceiaShipments?: BoraceiaShipment[];
+    totalBoraceiaPaletsSent?: number;
   };
 }
 

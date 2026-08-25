@@ -68,6 +68,7 @@ import { AgendaPlanilhaView } from './components/AgendaPlanilhaView';
 import { CipaView } from './components/CipaView';
 import { OccurrenceChatbot } from './components/OccurrenceChatbot';
 import { ExternalLinksMenu } from './components/ExternalLinksMenu';
+import { VeiculosView } from './components/VeiculosView';
 
 // --- Error Handling ---
 
@@ -704,7 +705,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
               {activeTab === 'exp_loja' && <ExpLojaView />}
               {activeTab === 'boraceia' && <BoraceiaView />}
-              {activeTab === 'veiculos' && <VeiculosView />}
+              {activeTab === 'veiculos' && <VeiculosView profile={profile} />}
               {activeTab === 'cipa' && <CipaView />}
               {activeTab === 'settings' && <SettingsView />}
             </motion.div>
@@ -987,6 +988,12 @@ function DashboardView() {
   const boraceiaOccupancyPercent = boraceiaCapacity > 0 ? Math.round((boraceiaOccupied / boraceiaCapacity) * 100) : 0;
   const boraceiaPaletsNoChao = boraceiaLog?.data?.paletsNoChao || 0;
 
+  // Veículos & Transferência de Estoque para Boracéia
+  const veiculosLog = logs.find(l => l.departmentId === 'veiculos');
+  const boraceiaShipments: any[] = veiculosLog?.data?.boraceiaShipments || [];
+  const totalPaletsSentToBoraceia = veiculosLog?.data?.totalBoraceiaPaletsSent ?? boraceiaShipments.reduce((sum: number, s: any) => sum + (Number(s.paletsCount) || 0), 0);
+  const activeBoraceiaShipments = boraceiaShipments.filter((s: any) => (Number(s.paletsCount) > 0 || s.driverName || s.departureTime));
+
   const allOccurrences = logs.flatMap(log => 
     (log.occurrences || []).map((occ: any) => ({
       ...occ,
@@ -1247,7 +1254,7 @@ function DashboardView() {
               </div>
             </div>
 
-            <div className="bg-white/80 dark:bg-neutral-900/80 p-5 rounded-2xl border border-amber-200/60 dark:border-amber-800/40">
+            <div className="bg-white/80 dark:bg-neutral-900/80 p-5 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 mb-4">
               <h4 className="text-xs font-black uppercase text-neutral-700 dark:text-neutral-300 tracking-wider mb-3 flex items-center gap-2">
                 <Users size={14} className="text-amber-600 dark:text-amber-400" />
                 Colaboradores por Função - Filial Boracéia
@@ -1263,6 +1270,100 @@ function DashboardView() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Transferência de Estoque SP ➔ Boracéia (Carretas do Dia) */}
+            <div className="bg-white/90 dark:bg-neutral-900/90 p-5 rounded-2xl border border-amber-300/80 dark:border-amber-700/60 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-amber-100 dark:border-amber-900/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
+                    <Truck size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                      Transferência de Estoque (Envio SP ➔ Boracéia)
+                      <span className="text-[10px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-extrabold px-2 py-0.5 rounded-full uppercase">
+                        Rota Diária
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                      Transferência via carretas registrada pelo setor de Veículos
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3 py-1.5 rounded-xl">
+                  <Package size={16} className="text-amber-600 dark:text-amber-400" />
+                  <span className="text-xs font-black text-amber-900 dark:text-amber-200">
+                    {totalPaletsSentToBoraceia} palets enviados hoje
+                  </span>
+                </div>
+              </div>
+
+              {activeBoraceiaShipments.length === 0 ? (
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800 text-center text-xs text-neutral-400">
+                  Nenhuma carreta com envio para Boracéia registrada até o momento hoje no setor de Veículos.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {activeBoraceiaShipments.map((shipment: any, idx: number) => {
+                    const status = shipment.status || 'Agendado';
+                    const isCompleted = status === 'Finalizado';
+                    const isInTransit = status === 'Em Trânsito' || status === 'Em Retorno SP';
+                    
+                    return (
+                      <div 
+                        key={shipment.id || idx}
+                        className="bg-amber-50/40 dark:bg-neutral-800/70 p-4 rounded-xl border border-amber-200/80 dark:border-amber-800/40 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center">
+                              #{idx + 1}
+                            </span>
+                            <span className="font-bold text-xs text-neutral-900 dark:text-white">
+                              {shipment.vehiclePlate ? `${shipment.vehiclePlate}` : `Carreta 0${idx + 1}`}
+                            </span>
+                          </div>
+                          <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                            isCompleted ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                            isInTransit ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 animate-pulse' :
+                            'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300'
+                          }`}>
+                            {status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-[11px] pt-1">
+                          <div className="bg-white/80 dark:bg-neutral-900/80 p-2 rounded-lg border border-amber-100 dark:border-neutral-700/60">
+                            <span className="text-[10px] text-neutral-400 font-medium block">Palets</span>
+                            <span className="font-black text-amber-600 dark:text-amber-400 text-sm">{shipment.paletsCount || 0}</span>
+                          </div>
+                          <div className="bg-white/80 dark:bg-neutral-900/80 p-2 rounded-lg border border-amber-100 dark:border-neutral-700/60 col-span-2">
+                            <span className="text-[10px] text-neutral-400 font-medium block">Motorista</span>
+                            <span className="font-bold text-neutral-800 dark:text-neutral-200 truncate block">{shipment.driverName || 'Não informado'}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-neutral-600 dark:text-neutral-400 pt-1 border-t border-amber-100/80 dark:border-neutral-700/50">
+                          <span className="flex items-center gap-1 font-medium">
+                            <span className="text-neutral-400">Saída SP:</span> <strong className="text-neutral-800 dark:text-neutral-200">{shipment.departureTime || '--:--'}</strong>
+                          </span>
+                          <span className="flex items-center gap-1 font-medium">
+                            <span className="text-neutral-400">Chegada SP:</span> <strong className="text-neutral-800 dark:text-neutral-200">{shipment.arrivalTimeSP || '--:--'}</strong>
+                          </span>
+                        </div>
+
+                        {shipment.observation && (
+                          <p className="text-[10px] text-neutral-500 italic truncate pt-0.5">
+                            Obs: {shipment.observation}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -3165,34 +3266,6 @@ function BoraceiaView() {
         </a>
       </div>
     }
-  />;
-}
-
-function VeiculosView() {
-  const [settings, setSettings] = useState<any>(null);
-
-  useEffect(() => {
-    return onSnapshot(doc(db, 'settings', 'global'), (doc) => {
-      if (doc.exists()) setSettings(doc.data());
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/global');
-    });
-  }, []);
-
-  const vehicles = settings?.vehicles || [];
-
-  return <DepartmentView 
-    departmentId="veiculos" 
-    title="Veículos" 
-    fields={[
-      { name: 'driversCount', label: 'Motoristas Trabalhando', type: 'number' },
-      { 
-        name: 'registeredVehicles', 
-        label: 'Veículos em Operação Hoje', 
-        type: 'multiselect', 
-        options: vehicles.map((v: any) => `${v.plate} - ${v.model}`) 
-      }
-    ]} 
   />;
 }
 
