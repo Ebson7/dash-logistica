@@ -45,6 +45,49 @@ import {
   InventoryPhase 
 } from '../types';
 
+/**
+ * Utilitário de formatação de data seguro contra fuso horário (previne recuo de 1 dia por UTC)
+ * Ex: '2027-01-08' é exibido rigorosamente como '08/01/2027' em qualquer timezone
+ */
+export const formatDateDisplay = (dateValue?: string | number | null): string => {
+  if (!dateValue) return '--';
+  if (typeof dateValue === 'number') {
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return '--';
+    return d.toLocaleDateString('pt-BR');
+  }
+  const str = String(dateValue).trim();
+  if (!str) return '--';
+
+  // Formato YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [year, month, day] = str.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  // Formato ISO com horário (ex: 2027-01-08T06:00:00)
+  if (str.includes('T')) {
+    const datePart = str.split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      const [year, month, day] = datePart.split('-');
+      return `${day}/${month}/${year}`;
+    }
+  }
+
+  // Fallback seguro
+  try {
+    if (str.length === 10 && str.includes('-')) {
+      const [year, month, day] = str.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+      return d.toLocaleDateString('pt-BR');
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? str : d.toLocaleDateString('pt-BR');
+  } catch {
+    return str;
+  }
+};
+
 // Default starter data for Marsil Inventário Geral 2027
 const DEFAULT_INVENTORY_DATA: InventoryConfigData = {
   title: 'Inventário Geral Marsil 2027',
@@ -311,16 +354,44 @@ export default function InventarioGeralView() {
   // Update countdown clock
   useEffect(() => {
     const calculateTime = () => {
-      const target = new Date(`${data.targetDate}T${data.targetTime || '06:00'}:00`).getTime();
+      if (!data.targetDate) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      let targetYear = 2027;
+      let targetMonth = 1;
+      let targetDay = 1;
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(data.targetDate)) {
+        const parts = data.targetDate.split('-').map(Number);
+        targetYear = parts[0];
+        targetMonth = parts[1];
+        targetDay = parts[2];
+      } else {
+        const d = new Date(data.targetDate);
+        if (!isNaN(d.getTime())) {
+          targetYear = d.getFullYear();
+          targetMonth = d.getMonth() + 1;
+          targetDay = d.getDate();
+        }
+      }
+
+      const [hoursStr, minutesStr] = (data.targetTime || '06:00').split(':');
+      const hours = parseInt(hoursStr, 10) || 0;
+      const minutes = parseInt(minutesStr, 10) || 0;
+
+      // Cria data no timezone local do usuário sem offset UTC
+      const target = new Date(targetYear, targetMonth - 1, targetDay, hours, minutes, 0, 0).getTime();
       const now = new Date().getTime();
       const diff = target - now;
 
       if (diff > 0) {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft({ days, hours, minutes, seconds });
+        const hoursLeft = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutesLeft = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsLeft = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours: hoursLeft, minutes: minutesLeft, seconds: secondsLeft });
       } else {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
@@ -686,7 +757,7 @@ export default function InventarioGeralView() {
               </div>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400">
                 <Calendar size={13} />
-                <span>{new Date(data.targetDate).toLocaleDateString('pt-BR')} às {data.targetTime || '06:00'}</span>
+                <span>{formatDateDisplay(data.targetDate)} às {data.targetTime || '06:00'}</span>
               </div>
             </div>
 
@@ -916,7 +987,7 @@ export default function InventarioGeralView() {
 
                     <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[11px] text-neutral-400">
                       <span>Por: <strong className="text-neutral-600 dark:text-neutral-300">{ann.author}</strong></span>
-                      <span>{new Date(ann.date).toLocaleDateString('pt-BR')}</span>
+                      <span>{formatDateDisplay(ann.date)}</span>
                     </div>
                   </div>
                 );
@@ -1288,7 +1359,7 @@ export default function InventarioGeralView() {
 
                   <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-2">
                     <span className="text-[10px] text-neutral-400">
-                      Postado: {new Date(docItem.uploadedAt).toLocaleDateString('pt-BR')}
+                      Postado: {formatDateDisplay(docItem.uploadedAt)}
                     </span>
 
                     <button
@@ -1377,7 +1448,7 @@ export default function InventarioGeralView() {
 
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                            📅 {phase.startDate ? new Date(phase.startDate).toLocaleDateString('pt-BR') : '--'} até {phase.endDate ? new Date(phase.endDate).toLocaleDateString('pt-BR') : '--'}
+                            📅 {formatDateDisplay(phase.startDate)} até {formatDateDisplay(phase.endDate)}
                           </span>
 
                           {isAdmin && (
