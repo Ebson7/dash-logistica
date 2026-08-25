@@ -49,6 +49,7 @@ export const DEPARTMENTS: Record<DepartmentId, Department> = {
     totalStaff: 15,
     icon: 'Building2',
     roles: ['Separador', 'Conferente', 'Limpeza', 'Faturista', 'Supervisor', 'Estoquista', 'Empilhador'],
+    inventoryCapacity: 1645,
   },
   viewer: {
     id: 'viewer',

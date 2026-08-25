@@ -1,6 +1,6 @@
 {
   "name": "Marsil Log News",
-  "description": "Sistema de gestão departamental para logística, incluindo Estoque, Recebimento, Romaneio e Veículos com dashboard centralizado e nova planilha de agendamento.",
+  "description": "Sistema de gestão logística Marsil para São Paulo e Filial Boracéia, com gestão de CIPA, planilha de agendamento de recebimento, dashboard em tempo real e chatbot de ocorrências.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

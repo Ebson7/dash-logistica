@@ -8,6 +8,7 @@ export interface Department {
   totalStaff: number;
   icon: string;
   roles: string[];
+  inventoryCapacity?: number;
 }
 
 export interface Occurrence {
@@ -94,3 +95,25 @@ export interface UserProfile {
   departmentId: DepartmentId | 'admin';
   displayName: string;
 }
+
+export interface CipaMember {
+  id: string;
+  name: string;
+  role: string;
+  cipaRole: string;
+  department: string;
+  unit: 'São Paulo' | 'Boracéia' | 'Todas';
+  workSchedule: string;
+  shift: 'Manhã' | 'Tarde' | 'Noturno' | 'Comercial' | 'Geral';
+  status: 'Em Turno' | 'Disponível' | 'Folga' | 'Férias' | 'Afastado';
+  phone?: string;
+  email?: string;
+  badgeNumber?: string;
+  mandatePeriod?: string;
+  trainedFirstAid?: boolean;
+  trainedFireBrigade?: boolean;
+  notes?: string;
+  createdAt?: number | Timestamp;
+  updatedAt?: number | Timestamp;
+}
+

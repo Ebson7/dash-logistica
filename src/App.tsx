@@ -58,10 +58,16 @@ import {
   Check,
   FileSpreadsheet,
   Table,
-  Building2
+  Building2,
+  ShieldCheck,
+  CheckCircle2,
+  Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AgendaPlanilhaView } from './components/AgendaPlanilhaView';
+import { CipaView } from './components/CipaView';
+import { OccurrenceChatbot } from './components/OccurrenceChatbot';
+import { ExternalLinksMenu } from './components/ExternalLinksMenu';
 
 // --- Error Handling ---
 
@@ -409,6 +415,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
     { id: 'exp_loja', name: 'Exp. Loja', icon: ClipboardList },
     { id: 'boraceia', name: 'Boracéia', icon: Building2 },
     { id: 'veiculos', name: 'Veículos', icon: Truck },
+    { id: 'cipa', name: 'CIPA', icon: ShieldCheck },
   ];
 
   if (profile?.departmentId === 'admin') {
@@ -418,8 +425,8 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
   const filteredMenu = profile?.departmentId === 'admin'
     ? menuItems 
     : profile?.departmentId === 'viewer'
-      ? menuItems.filter(item => item.id === 'dashboard' || item.id === 'agenda_planilha')
-      : menuItems.filter(item => item.id === 'dashboard' || item.id === profile?.departmentId || (profile?.departmentId === 'recebimento' && item.id === 'agenda_planilha'));
+      ? menuItems.filter(item => item.id === 'dashboard' || item.id === 'agenda_planilha' || item.id === 'cipa')
+      : menuItems.filter(item => item.id === 'dashboard' || item.id === 'cipa' || item.id === profile?.departmentId || (profile?.departmentId === 'recebimento' && item.id === 'agenda_planilha'));
 
   return (
     <>
@@ -507,21 +514,8 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
             {!isCollapsed && <span>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>}
           </button>
 
-          <a 
-            href="https://romaneiomarsil.lovable.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title={isCollapsed ? 'Acessar Romaneio' : ''}
-            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl transition-all hover:bg-blue-100 dark:hover:bg-blue-900/30 group`}
-          >
-            <ExternalLink size={20} className="shrink-0" />
-            {!isCollapsed && (
-              <div className="flex flex-col">
-                <span className="text-sm font-bold">Acessar Romaneio</span>
-                <span className="text-[10px] text-blue-400 dark:text-blue-500 font-medium leading-tight">acessar após ás 13:30 em dias de semana</span>
-              </div>
-            )}
-          </a>
+          {/* External Systems & Links Menu */}
+          <ExternalLinksMenu isCollapsed={isCollapsed} />
 
           {(profile?.departmentId === 'admin' || profile?.departmentId === 'recebimento' || profile?.departmentId === 'viewer') && (
             <button
@@ -711,10 +705,14 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               {activeTab === 'exp_loja' && <ExpLojaView />}
               {activeTab === 'boraceia' && <BoraceiaView />}
               {activeTab === 'veiculos' && <VeiculosView />}
+              {activeTab === 'cipa' && <CipaView />}
               {activeTab === 'settings' && <SettingsView />}
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Global Floating Occurrence Chatbot */}
+        <OccurrenceChatbot currentDepartmentId={activeTab} />
       </div>
     </div>
   );
@@ -943,10 +941,13 @@ function DashboardView() {
     };
   }, [filterDate]);
 
-  const totalStaffPresent = logs.reduce((sum, log) => sum + (log.staffPresent || 0), 0);
+  // São Paulo specific logs and calculations (excluding Boracéia)
+  const spLogs = logs.filter(l => l.departmentId !== 'boraceia' && l.departmentId !== 'viewer');
+  const spTotalStaffPresent = spLogs.reduce((sum, log) => sum + (log.staffPresent || 0), 0);
   const totalOccurrences = logs.reduce((sum, log) => sum + (log.occurrences?.length || 0), 0);
-  const totalDrivers = logs.find(l => l.departmentId === 'veiculos')?.data?.driversCount || 0;
+  const spTotalDrivers = logs.find(l => l.departmentId === 'veiculos')?.data?.driversCount || 0;
   
+  // Boracéia specific metrics (treated individually, never summed with São Paulo)
   const boraceiaLog = logs.find(l => l.departmentId === 'boraceia');
   const boraceiaStaffPresent = boraceiaLog?.staffPresent || 0;
   const boraceiaTotalStaff = settings?.departments?.boraceia?.totalStaff ?? DEPARTMENTS.boraceia.totalStaff;
@@ -956,11 +957,11 @@ function DashboardView() {
   const boraceiaRoles = settings?.departments?.boraceia?.roles?.length ? settings.departments.boraceia.roles : DEPARTMENTS.boraceia.roles;
   const boraceiaPercent = boraceiaTotalStaff > 0 ? Math.round((boraceiaStaffPresent / boraceiaTotalStaff) * 100) : 0;
 
-  const totalFolhas = (logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.folhas || 0) + boraceiaFolhas;
-  const totalOrders = (logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + 
+  // São Paulo specific metrics
+  const spTotalFolhas = logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.folhas || 0;
+  const spTotalOrders = (logs.find(l => l.departmentId === 'romaneio_tarde')?.data?.ordersCount || 0) + 
     (logs.find(l => l.departmentId === 'romaneio_noturno')?.data?.ordersCount || 0) + 
-    (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0) + 
-    boraceiaOrders;
+    (logs.find(l => l.departmentId === 'exp_loja')?.data?.ordersCount || 0);
   
   const recebimentoLog = logs.find(l => l.departmentId === 'recebimento');
   const vehiclesReceived = recebimentoLog?.data?.vehiclesReceived || 0;
@@ -978,6 +979,13 @@ function DashboardView() {
   const estoqueAvailable = estoqueLog?.data?.availablePositions ?? estoqueCapacity;
   const estoqueOccupied = Math.max(0, estoqueCapacity - estoqueAvailable);
   const estoqueOccupancyPercent = estoqueCapacity > 0 ? Math.round((estoqueOccupied / estoqueCapacity) * 100) : 0;
+
+  // Boracéia stock occupancy metrics (Capacity: 1645 palets)
+  const boraceiaCapacity = settings?.departments?.boraceia?.inventoryCapacity ?? DEPARTMENTS.boraceia.inventoryCapacity ?? 1645;
+  const boraceiaAvailable = boraceiaLog?.data?.availablePositions ?? boraceiaCapacity;
+  const boraceiaOccupied = Math.max(0, boraceiaCapacity - boraceiaAvailable);
+  const boraceiaOccupancyPercent = boraceiaCapacity > 0 ? Math.round((boraceiaOccupied / boraceiaCapacity) * 100) : 0;
+  const boraceiaPaletsNoChao = boraceiaLog?.data?.paletsNoChao || 0;
 
   const allOccurrences = logs.flatMap(log => 
     (log.occurrences || []).map((occ: any) => ({
@@ -1100,12 +1108,12 @@ function DashboardView() {
           </header>
 
           <div className={`grid gap-4 sm:gap-6 ${isTVMode ? 'grid-cols-3 xl:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6'}`}>
-            <StatCard title="Total Colaboradores" value={totalStaffPresent} icon={Users} isTVMode={isTVMode} />
+            <StatCard title="Total Colaboradores (São Paulo)" value={spTotalStaffPresent} icon={Users} isTVMode={isTVMode} />
             <StatCard title={`Veículos Recebidos (${filterDate.split('-').reverse().join('/')})`} value={vehicleStats} icon={Truck} colorClass="bg-emerald-50 text-emerald-600" isTVMode={isTVMode} />
             <StatCard title="Palets Previstos" value={totalPaletsPrevistos} icon={Package} colorClass="bg-amber-50 text-amber-600" isTVMode={isTVMode} />
-            <StatCard title="Pedidos do Dia" value={totalOrders} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" isTVMode={isTVMode} />
-            <StatCard title="Total de Folhas do Dia" value={totalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" isTVMode={isTVMode} />
-            <StatCard title="Motoristas em Operação" value={totalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" isTVMode={isTVMode} />
+            <StatCard title="Pedidos do Dia (São Paulo)" value={spTotalOrders} icon={ClipboardList} colorClass="bg-orange-50 text-orange-600" isTVMode={isTVMode} />
+            <StatCard title="Total de Folhas (São Paulo)" value={spTotalFolhas} icon={Newspaper} colorClass="bg-purple-50 text-purple-600" isTVMode={isTVMode} />
+            <StatCard title="Motoristas em Operação (São Paulo)" value={spTotalDrivers} icon={UserIcon} colorClass="bg-blue-50 text-blue-600" isTVMode={isTVMode} />
           </div>
 
           <div className={`grid gap-3 sm:gap-4 ${isTVMode ? 'grid-cols-7' : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7'}`}>
@@ -1169,7 +1177,7 @@ function DashboardView() {
               </div>
             </div>
 
-            <div className={`grid gap-4 ${isTVMode ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'} mb-6`}>
+            <div className={`grid gap-4 ${isTVMode ? 'grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'} mb-6`}>
               <div className="bg-white/90 dark:bg-neutral-900/90 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1188,6 +1196,27 @@ function DashboardView() {
                     className={`h-full transition-all duration-500 ${boraceiaPercent < 70 ? 'bg-red-500' : boraceiaPercent < 90 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                     style={{ width: `${boraceiaPercent}%` }}
                   />
+                </div>
+              </div>
+
+              <div className="bg-white/90 dark:bg-neutral-900/90 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">Ocupação Estoque BC</p>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-3xl font-black text-neutral-900 dark:text-white">{boraceiaOccupancyPercent}%</span>
+                      <span className="text-xs font-semibold text-neutral-400">({boraceiaOccupied}/{boraceiaCapacity})</span>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl text-amber-600 dark:text-amber-400">
+                    <Package size={24} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-3 text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+                  <span>{boraceiaAvailable} livres</span>
+                  {boraceiaPaletsNoChao > 0 && (
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">Chão: {boraceiaPaletsNoChao}</span>
+                  )}
                 </div>
               </div>
 
@@ -1237,20 +1266,27 @@ function DashboardView() {
             </div>
           </div>
 
-          <div className="w-full">
+          {/* Section: Ocupação de Estoque (São Paulo e Boracéia) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            {/* Ocupação Estoque São Paulo */}
             <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
               <div className="flex justify-between items-start mb-6">
-                <h3 className={`font-bold dark:text-white ${isTVMode ? 'text-xl' : 'text-base sm:text-lg'}`}>Ocupação Estoque</h3>
-                <div className={`flex items-center bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50 ${isTVMode ? 'px-6 py-3 gap-4' : 'px-3 py-1.5 sm:px-4 sm:py-2 gap-2 sm:gap-3'}`}>
-                  <Package className={`text-amber-600 dark:text-amber-400 ${isTVMode ? 'w-8 h-8' : 'w-4 h-4 sm:w-5 h-5'}`} />
+                <div>
+                  <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold uppercase px-2.5 py-0.5 rounded-full">
+                    São Paulo
+                  </span>
+                  <h3 className={`font-bold dark:text-white mt-1 ${isTVMode ? 'text-xl' : 'text-base sm:text-lg'}`}>Ocupação Estoque - SP</h3>
+                </div>
+                <div className={`flex items-center bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800/50 ${isTVMode ? 'px-5 py-2.5 gap-3' : 'px-3 py-1.5 sm:px-4 sm:py-2 gap-2 sm:gap-3'}`}>
+                  <Package className={`text-blue-600 dark:text-blue-400 ${isTVMode ? 'w-7 h-7' : 'w-4 h-4 sm:w-5 h-5'}`} />
                   <div className="text-right">
-                    <p className={`font-bold text-amber-600 dark:text-amber-500 uppercase leading-none ${isTVMode ? 'text-xs mb-1' : 'text-[9px] sm:text-[10px]'}`}>Palets no Chão</p>
-                    <p className={`font-black text-amber-700 dark:text-amber-300 leading-none ${isTVMode ? 'text-2xl' : 'text-lg sm:text-xl'}`}>{paletsNoChao}</p>
+                    <p className={`font-bold text-blue-600 dark:text-blue-500 uppercase leading-none ${isTVMode ? 'text-xs mb-1' : 'text-[9px] sm:text-[10px]'}`}>Palets no Chão</p>
+                    <p className={`font-black text-blue-700 dark:text-blue-300 leading-none ${isTVMode ? 'text-2xl' : 'text-lg sm:text-xl'}`}>{paletsNoChao}</p>
                   </div>
                 </div>
               </div>
-              <div className={`flex flex-col items-center justify-center ${isTVMode ? 'h-[400px]' : 'h-64 sm:h-72 md:h-80'}`}>
-                <div className={`relative ${isTVMode ? 'w-64 h-64' : 'w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48'}`}>
+              <div className={`flex flex-col items-center justify-center ${isTVMode ? 'h-[320px]' : 'h-60 sm:h-64'}`}>
+                <div className={`relative ${isTVMode ? 'w-52 h-52' : 'w-36 h-36 sm:w-40 sm:h-40'}`}>
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 192 192">
                     <circle
                       cx="96"
@@ -1275,16 +1311,74 @@ function DashboardView() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-7xl' : 'text-2xl sm:text-3xl md:text-4xl'}`}>{estoqueOccupancyPercent}%</span>
-                    <span className={`text-neutral-400 dark:text-neutral-500 font-bold uppercase ${isTVMode ? 'text-lg mt-2' : 'text-[9px] sm:text-[10px] md:text-xs'}`}>Ocupado</span>
+                    <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-5xl' : 'text-2xl sm:text-3xl'}`}>{estoqueOccupancyPercent}%</span>
+                    <span className={`text-neutral-400 dark:text-neutral-500 font-bold uppercase ${isTVMode ? 'text-sm mt-1' : 'text-[9px] sm:text-[10px]'}`}>Ocupado</span>
                   </div>
                 </div>
-                <div className="mt-6 sm:mt-8 text-center px-4">
-                  <p className={`text-neutral-500 dark:text-neutral-400 ${isTVMode ? 'text-xl' : 'text-xs sm:text-sm'}`}>
-                    <span className="font-bold text-neutral-900 dark:text-neutral-200">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900 dark:text-neutral-200">{estoqueCapacity}</span> posições
+                <div className="mt-5 text-center px-4">
+                  <p className={`text-neutral-600 dark:text-neutral-300 ${isTVMode ? 'text-lg' : 'text-xs sm:text-sm'}`}>
+                    <span className="font-bold text-neutral-900 dark:text-white">{estoqueOccupied}</span> de <span className="font-bold text-neutral-900 dark:text-white">{estoqueCapacity}</span> posições
                   </p>
-                  <p className={`text-neutral-400 dark:text-neutral-500 mt-1 sm:mt-2 ${isTVMode ? 'text-lg' : 'text-[10px] sm:text-xs'}`}>
+                  <p className={`text-neutral-400 dark:text-neutral-500 mt-1 ${isTVMode ? 'text-sm' : 'text-[10px] sm:text-xs'}`}>
                     ({estoqueAvailable} disponíveis)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Ocupação Estoque Boracéia (Capacidade: 1645 palets) */}
+            <div className={`bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-amber-200/60 dark:border-amber-900/40 overflow-hidden ${isTVMode ? 'p-6' : 'p-4 sm:p-6 md:p-8'}`}>
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <span className="text-[10px] bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 font-extrabold uppercase px-2.5 py-0.5 rounded-full">
+                    Filial Boracéia
+                  </span>
+                  <h3 className={`font-bold dark:text-white mt-1 ${isTVMode ? 'text-xl' : 'text-base sm:text-lg'}`}>Ocupação Estoque - Boracéia</h3>
+                </div>
+                <div className={`flex items-center bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50 ${isTVMode ? 'px-5 py-2.5 gap-3' : 'px-3 py-1.5 sm:px-4 sm:py-2 gap-2 sm:gap-3'}`}>
+                  <Package className={`text-amber-600 dark:text-amber-400 ${isTVMode ? 'w-7 h-7' : 'w-4 h-4 sm:w-5 h-5'}`} />
+                  <div className="text-right">
+                    <p className={`font-bold text-amber-600 dark:text-amber-500 uppercase leading-none ${isTVMode ? 'text-xs mb-1' : 'text-[9px] sm:text-[10px]'}`}>Palets no Chão</p>
+                    <p className={`font-black text-amber-700 dark:text-amber-300 leading-none ${isTVMode ? 'text-2xl' : 'text-lg sm:text-xl'}`}>{boraceiaPaletsNoChao}</p>
+                  </div>
+                </div>
+              </div>
+              <div className={`flex flex-col items-center justify-center ${isTVMode ? 'h-[320px]' : 'h-60 sm:h-64'}`}>
+                <div className={`relative ${isTVMode ? 'w-52 h-52' : 'w-36 h-36 sm:w-40 sm:h-40'}`}>
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 192 192">
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r="88"
+                      stroke="currentColor"
+                      strokeWidth={isTVMode ? "12" : "14"}
+                      fill="transparent"
+                      className="text-neutral-100 dark:text-neutral-800"
+                    />
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r="88"
+                      stroke="currentColor"
+                      strokeWidth={isTVMode ? "12" : "14"}
+                      fill="transparent"
+                      strokeDasharray={552.92}
+                      strokeDashoffset={552.92 - (552.92 * boraceiaOccupancyPercent) / 100}
+                      className={`${boraceiaOccupancyPercent > 90 ? 'text-red-500' : boraceiaOccupancyPercent > 70 ? 'text-amber-500' : 'text-emerald-500'} transition-all duration-1000`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`font-bold text-neutral-900 dark:text-white ${isTVMode ? 'text-5xl' : 'text-2xl sm:text-3xl'}`}>{boraceiaOccupancyPercent}%</span>
+                    <span className={`text-neutral-400 dark:text-neutral-500 font-bold uppercase ${isTVMode ? 'text-sm mt-1' : 'text-[9px] sm:text-[10px]'}`}>Ocupado</span>
+                  </div>
+                </div>
+                <div className="mt-5 text-center px-4">
+                  <p className={`text-neutral-600 dark:text-neutral-300 ${isTVMode ? 'text-lg' : 'text-xs sm:text-sm'}`}>
+                    <span className="font-bold text-neutral-900 dark:text-white">{boraceiaOccupied}</span> de <span className="font-bold text-neutral-900 dark:text-white">{boraceiaCapacity}</span> palets
+                  </p>
+                  <p className={`text-neutral-400 dark:text-neutral-500 mt-1 ${isTVMode ? 'text-sm' : 'text-[10px] sm:text-xs'}`}>
+                    ({boraceiaAvailable} disponíveis • Cap: {boraceiaCapacity} palets)
                   </p>
                 </div>
               </div>
@@ -1384,7 +1478,7 @@ function DashboardView() {
 
 // --- Generic Department Form ---
 
-function DepartmentView({ departmentId, title, fields }: { departmentId: DepartmentId, title: string, fields: any[] }) {
+function DepartmentView({ departmentId, title, fields, customBanner }: { departmentId: DepartmentId, title: string, fields: any[], customBanner?: React.ReactNode }) {
   const { profile } = useAuth();
   const isViewer = profile?.departmentId === 'viewer';
   const [settings, setSettings] = useState<any>(null);
@@ -1396,6 +1490,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
   const [isCritical, setIsCritical] = useState(false);
   const [extraData, setExtraData] = useState<any>({});
   const [logs, setLogs] = useState<any[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const today = new Date().toLocaleDateString('en-CA');
 
   useEffect(() => {
@@ -1434,6 +1529,7 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveStatus('saving');
     const logRef = collection(db, 'logs');
     const existingLog = logs.find(l => l.date === today);
 
@@ -1453,7 +1549,10 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
       } else {
         await addDoc(logRef, { ...logData, occurrences: [] });
       }
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3500);
     } catch (error) {
+      setSaveStatus('idle');
       handleFirestoreError(error, OperationType.WRITE, `logs/${existingLog?.id || 'new'}`);
     }
   };
@@ -1501,6 +1600,10 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
           {new Date().toLocaleDateString('pt-BR')}
         </div>
       </header>
+
+      {customBanner && (
+        <div>{customBanner}</div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
@@ -1613,9 +1716,42 @@ function DepartmentView({ departmentId, title, fields }: { departmentId: Departm
               </div>
 
               {!isViewer && (
-                <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 dark:shadow-none">
-                  Salvar Dados do Dia
-                </button>
+                <motion.button 
+                  type="submit" 
+                  disabled={saveStatus === 'saving'}
+                  whileTap={{ scale: 0.98 }}
+                  animate={
+                    saveStatus === 'saved' 
+                      ? { scale: [1, 1.02, 1] } 
+                      : {}
+                  }
+                  className={`w-full py-4 px-6 rounded-2xl font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 ${
+                    saveStatus === 'saved' 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
+                  } disabled:opacity-60`}
+                >
+                  {saveStatus === 'saving' ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="animate-spin" size={19} />
+                      <span>Salvando Dados do Dia...</span>
+                    </div>
+                  ) : saveStatus === 'saved' ? (
+                    <motion.div 
+                      initial={{ scale: 0.85, opacity: 0 }} 
+                      animate={{ scale: 1, opacity: 1 }} 
+                      className="flex items-center gap-2 text-white"
+                    >
+                      <CheckCircle2 size={22} className="animate-bounce" />
+                      <span className="text-base font-black">Dados Salvos com Sucesso! ✓</span>
+                    </motion.div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Save size={19} />
+                      <span>Salvar Dados do Dia</span>
+                    </div>
+                  )}
+                </motion.button>
               )}
             </form>
           </section>
@@ -2939,7 +3075,34 @@ function RomaneioTardeView() {
       { name: 'ordersCount', label: 'Total de Pedidos', type: 'number' },
       { name: 'folhas', label: 'Total de Folhas', type: 'number' },
       { name: 'pickersCount', label: 'Separadores Trabalhando', type: 'number' }
-    ]} 
+    ]}
+    customBanner={
+      <div className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent border border-blue-200 dark:border-blue-900/50 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-blue-500/15 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
+            <ClipboardList size={22} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              Sistema Web de Romaneio
+              <span className="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 font-extrabold px-2 py-0.5 rounded-full uppercase">Sistema Externo</span>
+            </h4>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Acessar após às 13:30 em dias de semana para conferência e controle de romaneios.
+            </p>
+          </div>
+        </div>
+        <a
+          href="https://romaneiomarsil.lovable.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0 whitespace-nowrap"
+        >
+          <span>Acessar Romaneio Marsil</span>
+          <ExternalLink size={14} />
+        </a>
+      </div>
+    }
   />;
 }
 
@@ -2970,9 +3133,38 @@ function BoraceiaView() {
     departmentId="boraceia" 
     title="Boracéia" 
     fields={[
+      { name: 'availablePositions', label: 'Posições/Palets Disponíveis Hoje (Capacidade: 1645)', type: 'number' },
+      { name: 'paletsNoChao', label: 'Palets no Chão', type: 'number' },
       { name: 'ordersCount', label: 'Quantidade de Pedidos', type: 'number' },
       { name: 'folhas', label: 'Quantidade de Folhas', type: 'number' }
-    ]} 
+    ]}
+    customBanner={
+      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-200 dark:border-amber-900/50 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
+            <Package size={22} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              Consulta de Estoque Boracéia
+              <span className="text-[10px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-extrabold px-2 py-0.5 rounded-full uppercase">Sistema Externo</span>
+            </h4>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Acesse a aplicação web dedicada para consultar posições, relatórios e conferência de estoque da unidade Boracéia.
+            </p>
+          </div>
+        </div>
+        <a
+          href="https://report-estoque.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0 whitespace-nowrap"
+        >
+          <span>Acessar Consulta de Estoque</span>
+          <ExternalLink size={14} />
+        </a>
+      </div>
+    }
   />;
 }
 
@@ -3332,13 +3524,15 @@ function SettingsView() {
                       className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  {dept.id === 'estoque' && (
+                  {(dept.id === 'estoque' || dept.id === 'boraceia') && (
                     <div className="col-span-2">
-                      <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Capacidade Total (Posições)</label>
+                      <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">
+                        Capacidade Total ({dept.id === 'boraceia' ? 'Palets • Padrão: 1645' : 'Posições'})
+                      </label>
                       <input 
                         type="number"
-                        value={settings.departments?.[dept.id]?.inventoryCapacity || 0}
-                        onChange={(e) => updateDeptCapacity(dept.id, parseInt(e.target.value))}
+                        value={settings.departments?.[dept.id]?.inventoryCapacity ?? (dept.id === 'boraceia' ? 1645 : 0)}
+                        onChange={(e) => updateDeptCapacity(dept.id, parseInt(e.target.value) || 0)}
                         className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
