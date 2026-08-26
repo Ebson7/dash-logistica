@@ -44,6 +44,7 @@ import {
   Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { DuplicateAppointmentModal } from './DuplicateAppointmentModal';
 
 interface AgendaPlanilhaViewProps {
   isViewer?: boolean;
@@ -53,6 +54,8 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
   const [appointments, setAppointments] = useState<ReceivingAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [duplicateSuccessMessage, setDuplicateSuccessMessage] = useState<string | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<ReceivingAppointment | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(true);
   const [isQuickRowOpen, setIsQuickRowOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -259,21 +262,61 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleDuplicate = async (appointment: ReceivingAppointment) => {
+  const handleDuplicate = (appointment: ReceivingAppointment) => {
+    setDuplicateTarget(appointment);
+  };
+
+  const handleConfirmDuplicate = async (duplicates: Array<Omit<ReceivingAppointment, 'id' | 'createdAt'>>) => {
     try {
-      const duplicateData = {
-        ...appointment,
-        orderNumber: appointment.orderNumber ? `${appointment.orderNumber}-COPIA` : '',
-        status: 'Agendado' as const,
-        createdAt: serverTimestamp()
-      };
-      delete (duplicateData as any).id;
-      await addDoc(collection(db, 'appointments'), duplicateData);
+      for (const item of duplicates) {
+        await addDoc(collection(db, 'appointments'), {
+          ...item,
+          createdAt: serverTimestamp()
+        });
+      }
+      const msg = duplicates.length === 1 
+        ? `Agendamento duplicado com sucesso para ${duplicates[0].date.split('-').reverse().join('/')}!`
+        : `${duplicates.length} agendamentos duplicados com sucesso para o mês!`;
+      setDuplicateSuccessMessage(msg);
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2500);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setDuplicateSuccessMessage(null);
+      }, 4000);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'appointments');
     }
+  };
+
+  const handleOpenInForm = (appointmentData: Partial<ReceivingAppointment>) => {
+    setFormData({
+      date: appointmentData.date || new Date().toISOString().split('T')[0],
+      creationDate: appointmentData.creationDate || new Date().toISOString().split('T')[0],
+      staff: appointmentData.staff || '',
+      requester: appointmentData.requester || '',
+      contact: appointmentData.contact || '',
+      orderNumber: appointmentData.orderNumber || '',
+      supplier: appointmentData.supplier || '',
+      vehicle: appointmentData.vehicle || 'Carreta',
+      pallets: appointmentData.pallets ?? ('' as any),
+      scheduledTime: appointmentData.scheduledTime || '08:00',
+      observation: appointmentData.observation || '',
+      collaborator: appointmentData.collaborator || 'Michael',
+      receivingLocation: appointmentData.receivingLocation || 'Marsil',
+      receivingType: appointmentData.receivingType || 'Recebimento',
+      status: 'Agendado',
+      totalValue: appointmentData.totalValue ?? ('' as any),
+      paymentTerm: appointmentData.paymentTerm || '30 dias'
+    });
+    setEditingId(null);
+    setIsFormOpen(true);
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setDuplicateSuccessMessage('Dados copiados para o formulário! Ajuste a data ou campos e salve.');
+    setSaveSuccess(true);
+    setTimeout(() => {
+      setSaveSuccess(false);
+      setDuplicateSuccessMessage(null);
+    }, 4000);
   };
 
   const handleDelete = async (id: string) => {
@@ -413,10 +456,12 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-20 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-2.5 border border-emerald-400/30"
+            className="fixed top-20 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-2.5 border border-emerald-400/30 max-w-md"
           >
             <CheckCircle size={20} className="text-white shrink-0" />
-            <span>Dados gravados na planilha com sucesso!</span>
+            <span className="text-xs sm:text-sm font-bold">
+              {duplicateSuccessMessage || 'Dados gravados na planilha com sucesso!'}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -814,22 +859,66 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                  >
-                    Limpar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={formLoading}
-                    className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    <Check size={16} />
-                    {editingId ? 'Atualizar Linha na Planilha' : 'Inserir Dados na Planilha'}
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                  <div>
+                    {editingId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentAppt = appointments.find(a => a.id === editingId);
+                          if (currentAppt) {
+                            handleDuplicate(currentAppt);
+                          } else {
+                            // Synthesize appointment from formData
+                            handleDuplicate({
+                              id: 'temp',
+                              date: formData.date,
+                              creationDate: formData.creationDate,
+                              staff: formData.staff,
+                              requester: formData.requester,
+                              contact: formData.contact,
+                              orderNumber: formData.orderNumber,
+                              supplier: formData.supplier,
+                              vehicle: formData.vehicle,
+                              pallets: Number(formData.pallets) || 0,
+                              scheduledTime: formData.scheduledTime,
+                              observation: formData.observation,
+                              collaborator: formData.collaborator,
+                              receivingLocation: formData.receivingLocation,
+                              receivingType: formData.receivingType,
+                              status: formData.status,
+                              totalValue: Number(formData.totalValue) || 0,
+                              paymentTerm: formData.paymentTerm,
+                              createdAt: Date.now()
+                            });
+                          }
+                        }}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-neutral-100 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 flex items-center gap-1.5 transition-all"
+                        title="Duplicar este agendamento para outra data ou múltiplas datas do mês"
+                      >
+                        <Copy size={14} className="text-emerald-600" />
+                        Duplicar este Agendamento
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                      Limpar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={formLoading}
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      <Check size={16} />
+                      {editingId ? 'Atualizar Linha na Planilha' : 'Inserir Dados na Planilha'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -1299,8 +1388,8 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
                               </button>
                               <button
                                 onClick={() => handleDuplicate(appointment)}
-                                title="Duplicar Linha"
-                                className="p-1.5 hover:bg-neutral-200 text-neutral-600 dark:hover:bg-neutral-700 dark:text-neutral-300 rounded-lg transition-colors"
+                                title="Duplicar Agendamento (Alterar data ou criar recorrência)"
+                                className="p-1.5 hover:bg-emerald-100 text-emerald-600 dark:hover:bg-emerald-950/50 dark:text-emerald-400 rounded-lg transition-colors"
                               >
                                 <Copy size={13} />
                               </button>
@@ -1375,6 +1464,15 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
           </div>
         </div>
       </div>
+
+      {/* MODAL DE DUPLICAÇÃO DE AGENDAMENTO */}
+      <DuplicateAppointmentModal
+        isOpen={Boolean(duplicateTarget)}
+        appointment={duplicateTarget}
+        onClose={() => setDuplicateTarget(null)}
+        onConfirmDuplicate={handleConfirmDuplicate}
+        onOpenInForm={handleOpenInForm}
+      />
     </div>
   );
 }
