@@ -71,6 +71,8 @@ import InventarioGeralView from './components/InventarioGeralView';
 import { OccurrenceChatbot } from './components/OccurrenceChatbot';
 import { ExternalLinksMenu } from './components/ExternalLinksMenu';
 import { VeiculosView } from './components/VeiculosView';
+import { OccurrenceCommentSection } from './components/OccurrenceCommentSection';
+import { OccurrenceCommentBalloon } from './components/OccurrenceCommentBalloon';
 
 // --- Error Handling ---
 
@@ -840,52 +842,89 @@ function StatCard({ title, value, icon: Icon, colorClass = "bg-blue-50 text-blue
 }
 
 function OccurrenceCard({ occ }: { occ: any }) {
+  const { profile } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
+  const commentsCount = (occ.comments || []).length;
 
   return (
     <div 
-      onClick={() => setIsExpanded(!isExpanded)}
-      className={`group p-4 bg-white dark:bg-neutral-900 rounded-2xl border transition-all shadow-sm cursor-pointer ${
+      className={`group p-4 bg-white dark:bg-neutral-900 rounded-2xl border transition-all shadow-sm ${
         occ.isCritical 
           ? 'border-red-200 dark:border-red-900/50 bg-red-50/10 hover:bg-red-50/20' 
           : 'border-neutral-100 dark:border-neutral-800 hover:border-blue-200 dark:hover:border-blue-900'
       }`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex gap-2">
-          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-            occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 
-            occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 
-            'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-          }`}>
-            {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
-          </span>
-          {occ.isCritical && (
-            <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-200">
-              CRÍTICO
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="cursor-pointer"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+              occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 
+              occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 
+              'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+            }`}>
+              {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
             </span>
-          )}
+            {occ.isCritical && (
+              <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse shadow-sm shadow-red-200">
+                CRÍTICO
+              </span>
+            )}
+            {commentsCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
+                <MessageSquare size={10} />
+                {commentsCount} {commentsCount === 1 ? 'comentário' : 'comentários'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+              <Clock size={10} />
+              {new Date(occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            {isExpanded ? <ChevronUp size={14} className="text-neutral-300" /> : <ChevronDown size={14} className="text-neutral-300" />}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
-            <Clock size={10} />
-            {new Date(occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {isExpanded ? <ChevronUp size={14} className="text-neutral-300" /> : <ChevronDown size={14} className="text-neutral-300" />}
-        </div>
+        <h4 className="font-bold text-neutral-900 dark:text-neutral-100 text-sm mb-1 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          {occ.title || 'Sem Título'}
+        </h4>
+        <p className={`text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed transition-all ${isExpanded ? '' : 'line-clamp-2'}`}>
+          {occ.description}
+        </p>
       </div>
-      <h4 className="font-bold text-neutral-900 dark:text-neutral-100 text-sm mb-1 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-        {occ.title || 'Sem Título'}
-      </h4>
-      <p className={`text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed transition-all ${isExpanded ? '' : 'line-clamp-2'}`}>
-        {occ.description}
-      </p>
-      {occ.deptName && (
-        <div className="mt-3 pt-3 border-t border-neutral-50 dark:border-neutral-800 flex items-center justify-between">
+
+      <div className="mt-3 pt-3 border-t border-neutral-50 dark:border-neutral-800 flex items-center justify-between">
+        {occ.deptName ? (
           <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">{occ.deptName}</span>
-          <ArrowRight size={12} className="text-neutral-300 dark:text-neutral-700 group-hover:text-blue-400 transition-colors" />
-        </div>
-      )}
+        ) : <span />}
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(prev => !prev);
+          }}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          <MessageSquare size={12} />
+          <span>{isExpanded ? 'Recolher' : (commentsCount > 0 ? `Comentários (${commentsCount})` : 'Comentar')}</span>
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <OccurrenceCommentSection occurrence={occ} profile={profile} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1031,6 +1070,8 @@ function DashboardView() {
   const allOccurrences = logs.flatMap(log => 
     (log.occurrences || []).map((occ: any) => ({
       ...occ,
+      logId: log.id,
+      date: log.date,
       departmentId: log.departmentId,
       deptName: DEPARTMENTS[log.departmentId as DepartmentId]?.name || log.departmentId
     }))
@@ -1599,7 +1640,8 @@ function DashboardView() {
                   </div>
                 </div>
               </div>
-              <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar">
+              <div className="p-6 bg-neutral-50/50 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar space-y-4">
+                <OccurrenceCommentBalloon />
                 <OccurrenceList occurrences={filteredOccurrences} />
               </div>
             </div>
@@ -1723,7 +1765,14 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
     }
   };
 
-  const todayOccurrences = logs.find(l => l.date === today)?.occurrences || [];
+  const todayLog = logs.find(l => l.date === today);
+  const todayOccurrences = (todayLog?.occurrences || []).map((occ: any) => ({
+    ...occ,
+    logId: todayLog?.id,
+    date: todayLog?.date,
+    departmentId: departmentId,
+    deptName: DEPARTMENTS[departmentId]?.name
+  }));
   const criticalOccurrencesCount = todayOccurrences.filter((o: any) => o.isCritical || o.severity === 'high').length;
   const attendanceRate = totalStaff > 0 ? Math.min(100, Math.round((staffPresent / totalStaff) * 100)) : 0;
 
@@ -4055,44 +4104,75 @@ function SettingsView() {
 }
 
 function HistoryOccurrenceCard({ occ }: { occ: any }) {
+  const { profile } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
+  const commentsCount = (occ.comments || []).length;
 
   return (
     <div 
-      onClick={() => setIsExpanded(!isExpanded)}
-      className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-neutral-100 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-start justify-between gap-4 cursor-pointer hover:border-blue-200 dark:hover:border-blue-900 transition-all"
+      className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-2xl border border-neutral-100 dark:border-neutral-700 hover:border-blue-200 dark:hover:border-blue-900 transition-all"
     >
-      <div className="flex items-start gap-3 flex-1">
-        <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-          occ.severity === 'high' ? 'bg-red-500' : 
-          occ.severity === 'medium' ? 'bg-orange-500' : 'bg-blue-500'
-        }`} />
-        <div className="flex-1">
-          <p className={`text-sm font-medium text-neutral-900 dark:text-neutral-100 leading-relaxed ${isExpanded ? '' : 'line-clamp-1 sm:line-clamp-2'}`}>
-            {occ.description}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">{occ.deptName}</span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
-              <Calendar size={12} />
-              {new Date(occ.date + 'T00:00:00').toLocaleDateString('pt-BR')}
-            </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
-              <History size={12} />
-              {new Date(occ.timestamp).toLocaleTimeString()}
-            </span>
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 cursor-pointer"
+      >
+        <div className="flex items-start gap-3 flex-1">
+          <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+            occ.severity === 'high' ? 'bg-red-500' : 
+            occ.severity === 'medium' ? 'bg-orange-500' : 'bg-blue-500'
+          }`} />
+          <div className="flex-1">
+            <h5 className="font-bold text-neutral-900 dark:text-neutral-100 text-sm mb-0.5">
+              {occ.title || 'Ocorrência'}
+            </h5>
+            <p className={`text-sm font-medium text-neutral-700 dark:text-neutral-300 leading-relaxed ${isExpanded ? '' : 'line-clamp-1 sm:line-clamp-2'}`}>
+              {occ.description}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">{occ.deptName}</span>
+              <span className="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                <Calendar size={12} />
+                {occ.date ? occ.date.split('-').reverse().join('/') : (new Date(occ.timestamp).toLocaleDateString('pt-BR'))}
+              </span>
+              <span className="text-xs text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                <History size={12} />
+                {new Date(occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              {commentsCount > 0 && (
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1">
+                  <MessageSquare size={12} />
+                  {commentsCount} {commentsCount === 1 ? 'comentário' : 'comentários'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0">
+          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 
+            occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+          }`}>
+            {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+          </div>
+          <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+            <span>{isExpanded ? 'Recolher' : (commentsCount > 0 ? `Comentários (${commentsCount})` : 'Comentar')}</span>
+            {isExpanded ? <ChevronUp size={14} className="text-neutral-400" /> : <ChevronDown size={14} className="text-neutral-400" />}
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0">
-        <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-          occ.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 
-          occ.severity === 'medium' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-        }`}>
-          {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
-        </div>
-        {isExpanded ? <ChevronUp size={14} className="text-neutral-300" /> : <ChevronDown size={14} className="text-neutral-300" />}
-      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <OccurrenceCommentSection occurrence={occ} profile={profile} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -4117,6 +4197,7 @@ function OccurrenceHistory() {
   const filteredOccurrences = allLogs.flatMap(log => 
     (log.occurrences || []).map((occ: any) => ({
       ...occ,
+      logId: log.id,
       date: log.date,
       departmentId: log.departmentId,
       deptName: DEPARTMENTS[log.departmentId as DepartmentId]?.name || log.departmentId
@@ -4163,6 +4244,8 @@ function OccurrenceHistory() {
           </div>
         </div>
       </div>
+
+      <OccurrenceCommentBalloon />
 
       <div className="space-y-4 max-h-[600px] overflow-auto pr-2">
         {filteredOccurrences.length === 0 ? (

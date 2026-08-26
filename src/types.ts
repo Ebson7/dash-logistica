@@ -11,12 +11,27 @@ export interface Department {
   inventoryCapacity?: number;
 }
 
+export interface OccurrenceComment {
+  id: string;
+  authorUid: string;
+  authorName: string;
+  authorDepartment?: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface Occurrence {
   id: string;
   timestamp: number;
   title: string;
   description: string;
   severity: 'low' | 'medium' | 'high';
+  isCritical?: boolean;
+  comments?: OccurrenceComment[];
+  deptName?: string;
+  departmentId?: string;
+  logId?: string;
+  date?: string;
 }
 
 export interface Vehicle {

@@ -29,10 +29,15 @@ import {
   Filter, 
   List, 
   ChevronRight, 
+  ChevronDown,
+  ChevronUp,
   Layers,
-  BellRing
+  BellRing,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { OccurrenceCommentSection } from './OccurrenceCommentSection';
+import { OccurrenceCommentBalloon } from './OccurrenceCommentBalloon';
 
 interface OccurrenceChatbotProps {
   currentDepartmentId?: string;
@@ -432,6 +437,7 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
               ) : (
                 /* List of occurrences */
                 <div className="space-y-3">
+                  <OccurrenceCommentBalloon />
                   {todayOccurrences.length === 0 ? (
                     <div className="text-center py-8 text-neutral-400 space-y-2">
                       <CheckCircle2 size={32} className="mx-auto text-emerald-500 opacity-60" />
@@ -442,42 +448,7 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
                     </div>
                   ) : (
                     todayOccurrences.map((occ, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3.5 rounded-2xl border text-xs space-y-1.5 ${
-                          occ.severity === 'high'
-                            ? 'bg-red-50/70 dark:bg-red-950/30 border-red-200 dark:border-red-900/50'
-                            : occ.severity === 'medium'
-                            ? 'bg-orange-50/70 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900/50'
-                            : 'bg-neutral-50 dark:bg-neutral-800/60 border-neutral-200 dark:border-neutral-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${
-                              occ.severity === 'high' ? 'bg-red-500' : occ.severity === 'medium' ? 'bg-orange-500' : 'bg-blue-500'
-                            }`} />
-                            {occ.title}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">
-                            {occ.deptName}
-                          </span>
-                        </div>
-
-                        <p className="text-neutral-600 dark:text-neutral-300 text-[11px] leading-relaxed">
-                          {occ.description}
-                        </p>
-
-                        <div className="flex items-center justify-between text-[10px] text-neutral-400 pt-1">
-                          <span className="flex items-center gap-1">
-                            <Clock size={11} />
-                            {occ.timestamp ? new Date(occ.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Hoje'}
-                          </span>
-                          <span className="uppercase font-bold tracking-wider">
-                            Gravidade: {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
-                          </span>
-                        </div>
-                      </div>
+                      <ChatbotOccurrenceItem key={occ.id || idx} occ={occ} profile={profile} />
                     ))
                   )}
                 </div>
@@ -487,5 +458,92 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function ChatbotOccurrenceItem({ occ, profile }: { occ: any; profile: any }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const commentsCount = (occ.comments || []).length;
+
+  return (
+    <div
+      className={`p-3.5 rounded-2xl border text-xs space-y-1.5 transition-all ${
+        occ.severity === 'high'
+          ? 'bg-red-50/70 dark:bg-red-950/30 border-red-200 dark:border-red-900/50'
+          : occ.severity === 'medium'
+          ? 'bg-orange-50/70 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900/50'
+          : 'bg-neutral-50 dark:bg-neutral-800/60 border-neutral-200 dark:border-neutral-700'
+      }`}
+    >
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="cursor-pointer"
+      >
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${
+              occ.severity === 'high' ? 'bg-red-500' : occ.severity === 'medium' ? 'bg-orange-500' : 'bg-blue-500'
+            }`} />
+            {occ.title}
+          </span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">
+            {occ.deptName}
+          </span>
+        </div>
+
+        <p className={`text-neutral-600 dark:text-neutral-300 text-[11px] leading-relaxed transition-all ${isExpanded ? '' : 'line-clamp-2'}`}>
+          {occ.description}
+        </p>
+
+        <div className="flex items-center justify-between text-[10px] text-neutral-400 pt-1">
+          <span className="flex items-center gap-1">
+            <Clock size={11} />
+            {occ.timestamp ? new Date(occ.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Hoje'}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="uppercase font-bold tracking-wider">
+              {occ.severity === 'high' ? 'Alta' : occ.severity === 'medium' ? 'Média' : 'Baixa'}
+            </span>
+            {commentsCount > 0 && (
+              <span className="text-blue-600 dark:text-blue-400 font-bold flex items-center gap-0.5">
+                <MessageSquare size={10} />
+                {commentsCount}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-2 border-t border-neutral-200/60 dark:border-neutral-700/60 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(prev => !prev)}
+          className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+        >
+          <MessageSquare size={11} />
+          <span>{isExpanded ? 'Recolher comentários' : (commentsCount > 0 ? `Comentários (${commentsCount})` : 'Adicionar comentário')}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsExpanded(prev => !prev)}
+          className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+        >
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <OccurrenceCommentSection occurrence={occ} profile={profile} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
