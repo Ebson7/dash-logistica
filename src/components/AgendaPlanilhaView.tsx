@@ -48,9 +48,15 @@ import { DuplicateAppointmentModal } from './DuplicateAppointmentModal';
 
 interface AgendaPlanilhaViewProps {
   isViewer?: boolean;
+  customTitle?: string;
+  customDescription?: string;
 }
 
-export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps) {
+export function AgendaPlanilhaView({ 
+  isViewer = false,
+  customTitle,
+  customDescription 
+}: AgendaPlanilhaViewProps) {
   const [appointments, setAppointments] = useState<ReceivingAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -475,13 +481,22 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Planilha de Agendamento</h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
-                  Modo Planilha Dinâmica
+                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+                  {customTitle || 'Planilha de Agendamento'}
+                </h2>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                  isViewer
+                    ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                    : 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                }`}>
+                  {isViewer ? 'Modo Consulta (Somente Leitura)' : 'Modo Planilha Dinâmica'}
                 </span>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Preencha o formulário abaixo para lançar dados instantaneamente na grade ou edite as células diretamente.
+                {customDescription || (isViewer 
+                  ? 'Consulta e exportação da grade de agendamentos de recebimento.' 
+                  : 'Preencha o formulário abaixo para lançar dados instantaneamente na grade ou edite as células diretamente.'
+                )}
               </p>
             </div>
           </div>
@@ -1205,7 +1220,7 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
 
                 {/* Ações (O) */}
                 <th className="px-4 py-3 min-w-[110px] text-center bg-neutral-200/80 dark:bg-neutral-800">
-                  <span>Ações</span>
+                  <span>{isViewer ? 'Visualização' : 'Ações'}</span>
                 </th>
               </tr>
             </thead>
@@ -1217,7 +1232,9 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FileSpreadsheet size={36} className="text-neutral-400 dark:text-neutral-600" />
                       <p className="font-bold text-neutral-700 dark:text-neutral-200">Nenhum registro encontrado para os filtros selecionados.</p>
-                      <p className="text-xs">Utilize o botão "+ Novo Lançamento" acima para adicionar agendamentos à planilha.</p>
+                      {!isViewer && (
+                        <p className="text-xs">Utilize o botão "+ Novo Lançamento" acima para adicionar agendamentos à planilha.</p>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1377,7 +1394,7 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
                       {/* Ações */}
                       <td className="px-2 py-2 text-center whitespace-nowrap bg-neutral-50/50 dark:bg-neutral-800/50">
                         <div className="flex items-center justify-center gap-1">
-                          {!isViewer && (
+                          {!isViewer ? (
                             <>
                               <button
                                 onClick={() => handleEdit(appointment)}
@@ -1401,6 +1418,10 @@ export function AgendaPlanilhaView({ isViewer = false }: AgendaPlanilhaViewProps
                                 <Trash2 size={13} />
                               </button>
                             </>
+                          ) : (
+                            <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800">
+                              Consulta
+                            </span>
                           )}
                         </div>
                       </td>

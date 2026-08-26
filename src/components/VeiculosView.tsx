@@ -21,8 +21,10 @@ import {
   TrendingUp,
   MapPin,
   ExternalLink,
-  Info
+  Info,
+  FileSpreadsheet
 } from 'lucide-react';
+import { AgendaPlanilhaView } from './AgendaPlanilhaView';
 import { 
   doc, 
   collection, 
@@ -46,6 +48,7 @@ interface VeiculosViewProps {
 
 export function VeiculosView({ profile }: VeiculosViewProps) {
   const isViewer = profile?.departmentId === 'viewer';
+  const [activeSubTab, setActiveSubTab] = useState<'frota' | 'planilha'>('frota');
   const [settings, setSettings] = useState<any>(null);
   const [staffPresent, setStaffPresent] = useState<number>(0);
   const [staffByRole, setStaffByRole] = useState<Record<string, number>>({});
@@ -249,8 +252,34 @@ export function VeiculosView({ profile }: VeiculosViewProps) {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 pb-16">
-      {/* Header with Title and Overview KPIs */}
-      <header className="space-y-6">
+      {/* Sub-tab Navigation */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-neutral-100 dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+        <button 
+          onClick={() => setActiveSubTab('frota')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'frota' ? 'bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 shadow-sm border border-neutral-200/60 dark:border-neutral-700' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'}`}
+        >
+          <Truck size={15} />
+          Gestão da Frota & Boracéia
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('planilha')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${activeSubTab === 'planilha' ? 'bg-emerald-600 text-white shadow-sm font-black' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'}`}
+        >
+          <FileSpreadsheet size={15} />
+          Agenda Planilha (Consulta & Exportação)
+        </button>
+      </div>
+
+      {activeSubTab === 'planilha' ? (
+        <AgendaPlanilhaView 
+          isViewer={true}
+          customTitle="Agenda de Recebimento — Consulta Veículos"
+          customDescription="Consulta e exportação da grade de agendamentos, previsão de caminhões e horários de descarga na doca."
+        />
+      ) : (
+        <>
+          {/* Header with Title and Overview KPIs */}
+          <header className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
@@ -902,6 +931,8 @@ export function VeiculosView({ profile }: VeiculosViewProps) {
         </div>
 
       </form>
+      </>
+      )}
     </div>
   );
 }

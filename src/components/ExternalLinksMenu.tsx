@@ -30,6 +30,17 @@ export interface ExternalLinkItem {
 
 export const EXTERNAL_SYSTEM_LINKS: ExternalLinkItem[] = [
   {
+    id: 'agenda_boraceia',
+    title: 'Agenda Boracéia',
+    subtitle: 'Sistema de agendamento e controle Boracéia',
+    url: 'https://agendabora.vercel.app/',
+    iconName: 'FileSpreadsheet',
+    category: 'Agendamento',
+    badge: 'Agenda Boracéia',
+    badgeColor: 'emerald',
+    description: 'Sistema web para controle de agendamentos da Filial Boracéia.'
+  },
+  {
     id: 'romaneio',
     title: 'Acessar Romaneio',
     subtitle: 'Acessar após às 13:30 em dias de semana',
@@ -128,9 +139,11 @@ export function ExternalLinksMenu({ isCollapsed = false }: ExternalLinksMenuProp
                       className="group flex items-start gap-2.5 p-2 rounded-xl bg-neutral-50 hover:bg-blue-50/70 dark:bg-neutral-800/60 dark:hover:bg-blue-950/40 border border-neutral-100 dark:border-neutral-700/60 transition-all"
                     >
                       <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
-                        link.badgeColor === 'amber' 
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                        link.badgeColor === 'emerald'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          : link.badgeColor === 'amber' 
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                       }`}>
                         <IconComponent size={14} />
                       </div>
@@ -193,6 +206,7 @@ export function ExternalLinksMenu({ isCollapsed = false }: ExternalLinksMenuProp
             {EXTERNAL_SYSTEM_LINKS.map(link => {
               const IconComponent = ICON_MAP[link.iconName] || Globe;
               const isAmber = link.badgeColor === 'amber';
+              const isEmerald = link.badgeColor === 'emerald';
               return (
                 <a
                   key={link.id}
@@ -200,16 +214,20 @@ export function ExternalLinksMenu({ isCollapsed = false }: ExternalLinksMenuProp
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`group block p-2 rounded-lg border transition-all relative overflow-hidden ${
-                    isAmber
-                      ? 'bg-white dark:bg-neutral-800 hover:bg-amber-50/60 dark:hover:bg-amber-950/30 border-neutral-200/70 dark:border-neutral-700/60 hover:border-amber-300'
-                      : 'bg-white dark:bg-neutral-800 hover:bg-blue-50/60 dark:hover:bg-blue-950/30 border-neutral-200/70 dark:border-neutral-700/60 hover:border-blue-300'
+                    isEmerald
+                      ? 'bg-white dark:bg-neutral-800 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 border-neutral-200/70 dark:border-neutral-700/60 hover:border-emerald-300'
+                      : isAmber
+                        ? 'bg-white dark:bg-neutral-800 hover:bg-amber-50/60 dark:hover:bg-amber-950/30 border-neutral-200/70 dark:border-neutral-700/60 hover:border-amber-300'
+                        : 'bg-white dark:bg-neutral-800 hover:bg-blue-50/60 dark:hover:bg-blue-950/30 border-neutral-200/70 dark:border-neutral-700/60 hover:border-blue-300'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <div className={`p-1.5 rounded-lg shrink-0 transition-colors ${
-                      isAmber
-                        ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 group-hover:bg-amber-100'
-                        : 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 group-hover:bg-blue-100'
+                      isEmerald
+                        ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-100'
+                        : isAmber
+                          ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 group-hover:bg-amber-100'
+                          : 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 group-hover:bg-blue-100'
                     }`}>
                       <IconComponent size={14} />
                     </div>
@@ -217,9 +235,11 @@ export function ExternalLinksMenu({ isCollapsed = false }: ExternalLinksMenuProp
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span className={`font-semibold text-xs truncate ${
-                          isAmber 
-                            ? 'text-neutral-800 dark:text-neutral-200 group-hover:text-amber-600' 
-                            : 'text-neutral-800 dark:text-neutral-200 group-hover:text-blue-600'
+                          isEmerald
+                            ? 'text-neutral-800 dark:text-neutral-200 group-hover:text-emerald-600'
+                            : isAmber 
+                              ? 'text-neutral-800 dark:text-neutral-200 group-hover:text-amber-600' 
+                              : 'text-neutral-800 dark:text-neutral-200 group-hover:text-blue-600'
                         }`}>
                           {link.title}
                         </span>
