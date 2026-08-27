@@ -758,6 +758,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
               {activeTab === 'projetos' && (
                 <KanbanProjectsView 
                   isAdminUser={profile?.departmentId === 'admin' || profile?.email === 'ebsonsilva7@gmail.com'} 
+                  isViewer={profile?.departmentId === 'viewer'}
                   userEmail={profile?.email || user?.email || undefined} 
                   userName={profile?.displayName || undefined} 
                 />

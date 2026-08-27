@@ -30,7 +30,8 @@ import {
   Check,
   Building2,
   AlignLeft,
-  CalendarDays
+  CalendarDays,
+  RefreshCw
 } from 'lucide-react';
 import {
   collection,
@@ -141,16 +142,25 @@ const DEPARTMENTS_LIST = [
 ];
 
 interface KanbanProjectsViewProps {
-  isAdminUser: boolean;
+  isAdminUser?: boolean;
+  isViewer?: boolean;
   userEmail?: string;
   userName?: string;
 }
 
-export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanProjectsViewProps) {
+export function KanbanProjectsView({ isAdminUser = false, isViewer = false, userEmail, userName }: KanbanProjectsViewProps) {
+  const canEdit = !isViewer;
   const [projects, setProjects] = useState<KanbanProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string>('');
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const showFeedback = (text: string, type: 'success' | 'error' = 'success') => {
+    setFeedbackMessage({ text, type });
+    setTimeout(() => setFeedbackMessage(null), 3500);
+  };
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,14 +189,14 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
         projs.push({ id: docSnap.id, ...(docSnap.data() as any) });
       });
 
-      if (projs.length === 0 && isAdminUser) {
+      if (projs.length === 0 && canEdit) {
         // Seed initial projects
         INITIAL_PROJECTS.forEach(async (initP) => {
           try {
             await addDoc(collection(db, 'kanban_projects'), {
               ...initP,
               createdAt: serverTimestamp(),
-              createdBy: userEmail || 'admin'
+              createdBy: userName || userEmail || 'Gestor'
             });
           } catch (e) {
             console.error('Error creating initial project', e);
@@ -201,11 +211,12 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
       setLoading(false);
     }, (error) => {
       console.error('Error fetching projects:', error);
+      showFeedback('Erro ao conectar aos projetos. Verifique a conexão.', 'error');
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [isAdminUser, userEmail, activeProjectId]);
+  }, [canEdit, userEmail, userName, activeProjectId]);
 
   // Load Cards for active project
   useEffect(() => {
@@ -262,52 +273,70 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
     });
   }, [cards, searchQuery, filterPriority, filterDepartment]);
 
-  // Handle Move card to another column (Admin only)
+  // Handle Move card to another column
   const handleMoveCard = async (cardId: string, newColumnId: string) => {
-    if (!isAdminUser) return;
+    if (!canEdit) return;
     try {
       const cardRef = doc(db, 'kanban_cards', cardId);
       await updateDoc(cardRef, {
         columnId: newColumnId,
         updatedAt: serverTimestamp(),
-        updatedBy: userName || userEmail || 'admin'
+        updatedBy: userName || userEmail || 'colaborador'
       });
+      showFeedback('Tarefa movida com sucesso!');
     } catch (e) {
       console.error('Error moving card:', e);
-      alert('Erro ao mover o card. Tente novamente.');
+      showFeedback('Erro ao mover a tarefa. Tente novamente.', 'error');
     }
   };
 
-  // Handle Delete card (Admin only)
+  // Handle Delete card
   const handleDeleteCard = async (cardId: string) => {
-    if (!isAdminUser) return;
+    if (!canEdit) return;
     if (!window.confirm('Tem certeza que deseja excluir esta tarefa do projeto?')) return;
     try {
       await deleteDoc(doc(db, 'kanban_cards', cardId));
       if (selectedCardDetail?.id === cardId) {
         setSelectedCardDetail(null);
       }
+      showFeedback('Tarefa removida com sucesso!');
     } catch (e) {
       console.error('Error deleting card:', e);
-      alert('Erro ao excluir card.');
+      showFeedback('Erro ao excluir tarefa.', 'error');
     }
   };
 
-  // Handle Save Card (Create or Edit) (Admin only)
+  // Handle Save Card (Create or Edit)
   const handleSaveCard = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isAdminUser || !activeProjectId) return;
+    if (!canEdit) {
+      showFeedback('Usuário em modo de visualização não pode salvar dados.', 'error');
+      return;
+    }
 
+    const currentProjectId = activeProjectId || (projects[0]?.id ?? '');
+    if (!currentProjectId) {
+      showFeedback('Nenhum projeto selecionado. Crie um projeto primeiro.', 'error');
+      return;
+    }
+
+    setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const priority = formData.get('priority') as 'baixa' | 'media' | 'alta' | 'urgente';
-    const departmentId = formData.get('departmentId') as string;
-    const assigneeName = formData.get('assigneeName') as string;
-    const dueDate = formData.get('dueDate') as string;
-    const startDate = formData.get('startDate') as string;
-    const tagsStr = formData.get('tags') as string;
+    const title = (formData.get('title') as string || '').trim();
+    const description = (formData.get('description') as string || '').trim();
+    const priority = (formData.get('priority') as 'baixa' | 'media' | 'alta' | 'urgente') || 'media';
+    const departmentId = (formData.get('departmentId') as string || 'Recebimento').trim();
+    const assigneeName = (formData.get('assigneeName') as string || '').trim();
+    const dueDate = (formData.get('dueDate') as string || '').trim();
+    const startDate = (formData.get('startDate') as string || '').trim();
+    const tagsStr = (formData.get('tags') as string || '').trim();
     const columnId = (formData.get('columnId') as string) || targetColumnForNewCard;
+
+    if (!title) {
+      showFeedback('O título da tarefa é obrigatório.', 'error');
+      setIsSaving(false);
+      return;
+    }
 
     const tags = tagsStr
       ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean)
@@ -326,12 +355,13 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
           tags,
           columnId,
           updatedAt: serverTimestamp(),
-          updatedBy: userName || userEmail || 'admin'
+          updatedBy: userName || userEmail || 'colaborador'
         });
+        showFeedback('Tarefa atualizada com sucesso!');
       } else {
         const columnCards = cards.filter((c) => c.columnId === columnId);
         await addDoc(collection(db, 'kanban_cards'), {
-          projectId: activeProjectId,
+          projectId: currentProjectId,
           columnId,
           title,
           description,
@@ -345,21 +375,24 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
           checklist: [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          updatedBy: userName || userEmail || 'admin'
+          updatedBy: userName || userEmail || 'colaborador'
         });
+        showFeedback('Nova tarefa adicionada com sucesso ao quadro!');
       }
 
       setIsCardModalOpen(false);
       setEditingCard(null);
     } catch (err) {
       console.error('Error saving card:', err);
-      alert('Erro ao salvar o item.');
+      showFeedback('Erro ao salvar tarefa no banco de dados.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // Toggle Checklist Item
   const handleToggleChecklist = async (card: KanbanCard, checkId: string) => {
-    if (!isAdminUser) return;
+    if (!canEdit) return;
     const updatedChecklist = (card.checklist || []).map((item) =>
       item.id === checkId ? { ...item, done: !item.done } : item
     );
@@ -368,7 +401,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
       await updateDoc(doc(db, 'kanban_cards', card.id), {
         checklist: updatedChecklist,
         updatedAt: serverTimestamp(),
-        updatedBy: userName || userEmail || 'admin'
+        updatedBy: userName || userEmail || 'colaborador'
       });
       if (selectedCardDetail?.id === card.id) {
         setSelectedCardDetail({ ...selectedCardDetail, checklist: updatedChecklist });
@@ -381,7 +414,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
   // Add checklist item in detail view
   const [newChecklistText, setNewChecklistText] = useState('');
   const handleAddChecklistItem = async (card: KanbanCard) => {
-    if (!isAdminUser || !newChecklistText.trim()) return;
+    if (!canEdit || !newChecklistText.trim()) return;
     const newItem = {
       id: Date.now().toString(),
       text: newChecklistText.trim(),
@@ -393,29 +426,40 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
       await updateDoc(doc(db, 'kanban_cards', card.id), {
         checklist: updatedChecklist,
         updatedAt: serverTimestamp(),
-        updatedBy: userName || userEmail || 'admin'
+        updatedBy: userName || userEmail || 'colaborador'
       });
       setNewChecklistText('');
       if (selectedCardDetail?.id === card.id) {
         setSelectedCardDetail({ ...selectedCardDetail, checklist: updatedChecklist });
       }
+      showFeedback('Item de checklist adicionado!');
     } catch (e) {
       console.error('Error adding checklist item:', e);
     }
   };
 
-  // Handle Save Project (Create / Edit) (Admin only)
+  // Handle Save Project (Create / Edit)
   const handleSaveProject = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isAdminUser) return;
+    if (!canEdit) {
+      showFeedback('Acesso somente leitura.', 'error');
+      return;
+    }
 
+    setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const category = formData.get('category') as string;
-    const targetDate = formData.get('targetDate') as string;
-    const status = formData.get('status') as 'planejamento' | 'em_andamento' | 'concluido' | 'pausado';
+    const title = (formData.get('title') as string || '').trim();
+    const description = (formData.get('description') as string || '').trim();
+    const category = (formData.get('category') as string || 'Operacional & Logística').trim();
+    const targetDate = (formData.get('targetDate') as string || '').trim();
+    const status = (formData.get('status') as 'planejamento' | 'em_andamento' | 'concluido' | 'pausado') || 'em_andamento';
     const color = (formData.get('color') as string) || 'blue';
+
+    if (!title) {
+      showFeedback('O nome do projeto é obrigatório.', 'error');
+      setIsSaving(false);
+      return;
+    }
 
     try {
       if (editingProject) {
@@ -428,6 +472,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
           color,
           updatedAt: serverTimestamp()
         });
+        showFeedback('Projeto atualizado com sucesso!');
       } else {
         const docRef = await addDoc(collection(db, 'kanban_projects'), {
           title,
@@ -437,23 +482,26 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
           status,
           color,
           createdAt: serverTimestamp(),
-          createdBy: userName || userEmail || 'admin'
+          createdBy: userName || userEmail || 'Gestor'
         });
         setActiveProjectId(docRef.id);
+        showFeedback('Novo projeto criado e ativo!');
       }
 
       setIsProjectModalOpen(false);
       setEditingProject(null);
     } catch (err) {
       console.error('Error saving project:', err);
-      alert('Erro ao salvar projeto.');
+      showFeedback('Erro ao salvar projeto no banco de dados.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Handle Delete Project (Admin only)
+  // Handle Delete Project
   const handleDeleteProject = async (projectId: string) => {
-    if (!isAdminUser) return;
-    if (!window.confirm('Tem certeza que deseja excluir este projeto inteiro e seus cards?')) return;
+    if (!canEdit) return;
+    if (!window.confirm('Tem certeza que deseja excluir este projeto inteiro e suas tarefas?')) return;
 
     try {
       // delete project
@@ -465,9 +513,10 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
       } else {
         setActiveProjectId('');
       }
+      showFeedback('Projeto excluído com sucesso.');
     } catch (e) {
       console.error('Error deleting project:', e);
-      alert('Erro ao excluir projeto.');
+      showFeedback('Erro ao excluir projeto.', 'error');
     }
   };
 
@@ -485,10 +534,28 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
   }, [cards]);
 
   return (
-    <div id="kanban-projects-root" className="w-full max-w-7xl mx-auto space-y-6 pb-20">
+    <div id="kanban-projects-root" className="w-full max-w-7xl mx-auto space-y-6 pb-20 relative">
+      {/* Toast Notification */}
+      {feedbackMessage && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-slideUp text-xs sm:text-sm font-bold ${
+            feedbackMessage.type === 'error'
+              ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800 shadow-rose-500/10'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800 shadow-emerald-500/10'
+          }`}
+        >
+          {feedbackMessage.type === 'error' ? (
+            <AlertTriangle size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span>{feedbackMessage.text}</span>
+        </div>
+      )}
+
       {/* Top Header */}
       <header className="space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
               <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white shadow-md shadow-indigo-500/20">
@@ -499,9 +566,9 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
                   <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white tracking-tight">
                     Quadro de Projetos & Ações
                   </h1>
-                  {isAdminUser ? (
+                  {canEdit ? (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                      Modo Gestor / Admin
+                      {isAdminUser ? 'Modo Gestor / Admin' : 'Modo Operacional'}
                     </span>
                   ) : (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 flex items-center gap-1">
@@ -517,7 +584,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
             </div>
           </div>
 
-          {/* Quick Actions for Admin */}
+          {/* Quick Actions */}
           <div className="flex items-center gap-2">
             <div className="flex items-center p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-neutral-700">
               <button
@@ -546,7 +613,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
               </button>
             </div>
 
-            {isAdminUser && (
+            {canEdit && (
               <button
                 id="btn-new-project"
                 onClick={() => {
@@ -619,7 +686,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
                   </div>
                 )}
 
-                {isAdminUser && (
+                {canEdit && (
                   <>
                     <button
                       id="btn-edit-active-project"
@@ -748,8 +815,8 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
             </div>
           </div>
 
-          {/* New Card Button (Admin Only) */}
-          {isAdminUser && (
+          {/* New Card Button */}
+          {canEdit && (
             <button
               id="btn-add-card-top"
               onClick={() => {
@@ -868,8 +935,8 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
                           )}
                         </div>
 
-                        {/* Admin Move actions bar on hover/touch */}
-                        {isAdminUser && (
+                        {/* Move actions bar on hover/touch */}
+                        {canEdit && (
                           <div
                             onClick={(e) => e.stopPropagation()}
                             className="pt-2 flex items-center justify-between gap-1 border-t border-dashed border-neutral-200 dark:border-neutral-700"
@@ -902,8 +969,8 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
                   )}
                 </div>
 
-                {/* Add Card Footer Button in Column (Admin Only) */}
-                {isAdminUser && (
+                {/* Add Card Footer Button in Column */}
+                {canEdit && (
                   <button
                     id={`btn-add-card-col-${column.id}`}
                     onClick={() => {
@@ -1023,7 +1090,7 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                {isAdminUser && (
+                {canEdit && (
                   <>
                     <button
                       id="btn-edit-card-modal"
@@ -1137,8 +1204,8 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
                     </div>
                   ))}
 
-                  {/* Add item to checklist (Admin Only) */}
-                  {isAdminUser && (
+                  {/* Add item to checklist */}
+                  {canEdit && (
                     <div className="flex items-center gap-2 pt-1">
                       <input
                         type="text"
@@ -1186,8 +1253,8 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
               )}
             </div>
 
-            {/* Footer with Move Actions for Admin */}
-            {isAdminUser && (
+            {/* Footer with Move Actions */}
+            {canEdit && (
               <div className="p-4 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-xs font-bold text-neutral-500">Mover para etapa:</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -1220,9 +1287,9 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
       )}
 
       {/* ========================================================================= */}
-      {/* CREATE / EDIT CARD MODAL (ADMIN ONLY) */}
+      {/* CREATE / EDIT CARD MODAL */}
       {/* ========================================================================= */}
-      {isCardModalOpen && isAdminUser && (
+      {isCardModalOpen && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-xl bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div className="p-5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-900/50">
@@ -1379,19 +1446,22 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
               <div className="pt-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={() => {
                     setIsCardModalOpen(false);
                     setEditingCard(null);
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/30"
+                  disabled={isSaving}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/30 disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {editingCard ? 'Salvar Alterações' : 'Criar Tarefa'}
+                  {isSaving && <RefreshCw size={12} className="animate-spin" />}
+                  {isSaving ? 'Salvando...' : editingCard ? 'Salvar Alterações' : 'Criar Tarefa'}
                 </button>
               </div>
             </form>
@@ -1400,9 +1470,9 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
       )}
 
       {/* ========================================================================= */}
-      {/* CREATE / EDIT PROJECT MODAL (ADMIN ONLY) */}
+      {/* CREATE / EDIT PROJECT MODAL */}
       {/* ========================================================================= */}
-      {isProjectModalOpen && isAdminUser && (
+      {isProjectModalOpen && canEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div className="p-5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-900/50">
@@ -1516,19 +1586,22 @@ export function KanbanProjectsView({ isAdminUser, userEmail, userName }: KanbanP
               <div className="pt-3 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={() => {
                     setIsProjectModalOpen(false);
                     setEditingProject(null);
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/30"
+                  disabled={isSaving}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/30 disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {editingProject ? 'Salvar Alterações' : 'Criar Projeto'}
+                  {isSaving && <RefreshCw size={12} className="animate-spin" />}
+                  {isSaving ? 'Salvando...' : editingProject ? 'Salvar Alterações' : 'Criar Projeto'}
                 </button>
               </div>
             </form>

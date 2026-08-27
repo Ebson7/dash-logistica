@@ -8,6 +8,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && 
         (request.auth.token.email == 'ebsonsilva7@gmail.com' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departmentId == 'admin' ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
 
@@ -36,14 +37,20 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /agenda_recebimento/{agendaId} {
+      allow read, create, update, delete: if isAuthenticated();
+    }
+
+    match /agenda_settings/{settingId} {
+      allow read, write: if isAuthenticated();
+    }
+
     match /kanban_projects/{projectId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, create, update, delete: if isAuthenticated();
     }
 
     match /kanban_cards/{cardId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, create, update, delete: if isAuthenticated();
     }
     
     match /{document=**} {
