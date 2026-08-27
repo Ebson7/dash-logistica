@@ -43,7 +43,7 @@ import {
   serverTimestamp,
   orderBy
 } from 'firebase/firestore';
-import { db } from '../App';
+import { db } from '../firebase';
 
 export interface KanbanCard {
   id: string;
