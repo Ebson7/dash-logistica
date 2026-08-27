@@ -1,156 +1,226 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "User profile and department assignment",
+    "users": {
+      "title": "Usuários",
+      "description": "Perfis de usuários com cargos e permissões do sistema",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "departmentId": { "type": "string", "enum": ["estoque", "recebimento", "romaneio", "veiculos", "admin", "viewer"] },
-        "displayName": { "type": "string" }
+        "email": { "type": "string", "description": "E-mail do usuário" },
+        "name": { "type": "string", "description": "Nome completo" },
+        "role": { "type": "string", "description": "Cargo (admin, gestor, operador, visualizador)" },
+        "departmentId": { "type": "string", "description": "Departamento associado" },
+        "status": { "type": "string", "description": "Status da conta (active, pending, inactive)" },
+        "createdAt": { "type": "string", "description": "Data de criação" }
       },
-      "required": ["uid", "email", "departmentId"]
-    },
-    "DailyLog": {
-      "title": "DailyLog",
-      "description": "Daily operational logs for a department",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "date": { "type": "string", "description": "YYYY-MM-DD" },
-        "departmentId": { "type": "string" },
-        "staffPresent": { "type": "number" },
-        "staffByRole": { "type": "object", "additionalProperties": { "type": "number" } },
-        "occurrences": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "timestamp": { "type": "number" },
-              "description": { "type": "string" },
-              "severity": { "type": "string", "enum": ["low", "medium", "high"] }
-            }
-          }
-        },
-        "data": {
-          "type": "object",
-          "properties": {
-            "vehiclesReceived": { "type": "number" },
-            "vehicleTypes": { "type": "array", "items": { "type": "string" } },
-            "ordersCount": { "type": "number" },
-            "pickersCount": { "type": "number" },
-            "driversCount": { "type": "number" },
-            "registeredVehicles": { "type": "array", "items": { "type": "string" } }
-          }
-        }
-      },
-      "required": ["date", "departmentId", "staffPresent"]
-    },
-    "AppSettings": {
-      "title": "AppSettings",
-      "description": "Global application settings",
-      "type": "object",
-      "properties": {
-        "departments": { "type": "object" },
-        "vehicles": { 
-          "type": "array", 
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "plate": { "type": "string" },
-              "model": { "type": "string" },
-              "type": { "type": "string" }
-            }
-          }
-        }
+      "required": ["email", "name", "role", "status"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "auth != null",
+        "update": "auth != null",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
       }
     },
-    "ReceivingAppointment": {
-      "title": "ReceivingAppointment",
-      "description": "Appointment for receiving goods",
+    "departments": {
+      "title": "Departamentos",
+      "description": "Módulos operacionais do CD",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "date": { "type": "string" },
-        "creationDate": { "type": "string" },
-        "staff": { "type": "string" },
-        "requester": { "type": "string" },
-        "contact": { "type": "string" },
-        "orderNumber": { "type": "string" },
-        "supplier": { "type": "string" },
-        "vehicle": { "type": "string" },
-        "pallets": { "type": "number" },
-        "scheduledTime": { "type": "string" },
-        "observation": { "type": "string" },
-        "collaborator": { "type": "string" },
-        "status": { "type": "string", "enum": ["Agendado", "Aguardando", "Descarregando", "Recebido", "Cancelado"] },
-        "totalValue": { "type": "number" },
-        "paymentTerm": { "type": "string" },
-        "receivingLocation": { "type": "string", "enum": ["Marsil", "OP. Logístico", "Boracéia", "Outro"] },
-        "receivingType": { "type": "string", "enum": ["Recebimento", "Retorno OP", "Retorno BC"] },
-        "createdAt": { "type": "object" }
+        "name": { "type": "string", "description": "Nome do departamento" },
+        "description": { "type": "string", "description": "Descrição das atividades" },
+        "color": { "type": "string", "description": "Cor de identificação" },
+        "icon": { "type": "string", "description": "Ícone Lucide" },
+        "order": { "type": "number", "description": "Ordem de exibição" }
       },
-      "required": ["date", "supplier", "collaborator", "receivingLocation", "receivingType"]
-    },
-    "Presence": {
-      "title": "Presence",
-      "description": "User online presence",
-      "type": "object",
-      "properties": {
-        "lastActive": { "type": "object" },
-        "page": { "type": "string" },
-        "displayName": { "type": "string" }
+      "required": ["name"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "update": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
       }
     },
-    "InventoryConfig": {
-      "title": "InventoryConfig",
-      "description": "Configuration, timeline, notices, procedures and files for General Inventory",
+    "department_entries": {
+      "title": "Lançamentos Departamentais",
+      "description": "Registros de dados diários preenchidos por cada setor",
       "type": "object",
       "properties": {
-        "title": { "type": "string" },
-        "targetDate": { "type": "string" },
-        "endDate": { "type": "string" },
-        "status": { "type": "string" },
-        "accuracyGoal": { "type": "number" },
-        "description": { "type": "string" },
-        "coordinator": { "type": "string" },
-        "announcements": { "type": "array" },
-        "processes": { "type": "array" },
-        "structure": { "type": "array" },
-        "documents": { "type": "array" },
-        "phases": { "type": "array" },
-        "updatedAt": { "type": "string" },
-        "updatedBy": { "type": "string" }
+        "departmentId": { "type": "string", "description": "ID do departamento" },
+        "date": { "type": "string", "description": "Data do registro (YYYY-MM-DD)" },
+        "userId": { "type": "string", "description": "ID do usuário que realizou o lançamento" },
+        "userName": { "type": "string", "description": "Nome do usuário" },
+        "data": { "type": "object", "description": "Campos específicos do formulário" },
+        "status": { "type": "string", "description": "Status (draft, submitted, approved)" },
+        "createdAt": { "type": "string", "description": "Timestamp de criação" }
+      },
+      "required": ["departmentId", "date", "userId", "data"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "auth != null",
+        "update": "auth != null",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
       }
-    }
-  },
-  "firestore": {
-    "/users/{uid}": {
-      "schema": "UserProfile",
-      "description": "User profiles"
     },
-    "/logs/{logId}": {
-      "schema": "DailyLog",
-      "description": "Daily logs for all departments"
+    "collaborators": {
+      "title": "Colaboradores",
+      "description": "Cadastro e controle de presença/turnos dos colaboradores",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Nome do colaborador" },
+        "role": { "type": "string", "description": "Função/Cargo" },
+        "shift": { "type": "string", "description": "Turno de trabalho (1º, 2º, 3º)" },
+        "departmentId": { "type": "string", "description": "Departamento associado" },
+        "status": { "type": "string", "description": "Status (presente, ausente, folga, ferias, atestado)" }
+      },
+      "required": ["name", "role", "shift"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "auth != null",
+        "update": "auth != null",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
     },
-    "/settings/global": {
-      "schema": "AppSettings",
-      "description": "Global settings"
+    "checklist_templates": {
+      "title": "Modelos de Checklist",
+      "description": "Templates de verificação diária por setor",
+      "type": "object",
+      "properties": {
+        "departmentId": { "type": "string", "description": "ID do setor" },
+        "title": { "type": "string", "description": "Título do checklist" },
+        "items": { "type": "array", "description": "Itens a serem checados" }
+      },
+      "required": ["departmentId", "title", "items"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "update": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
     },
-    "/appointments/{id}": {
-      "schema": "ReceivingAppointment",
-      "description": "Receiving appointments"
+    "agenda_recebimento": {
+      "title": "Agenda de Recebimento",
+      "description": "Controle de agendamento de recebimento com sincronização de planilha e dados dos fornecedores",
+      "type": "object",
+      "properties": {
+        "idAgenda": { "type": "string", "description": "ID do agendamento" },
+        "data": { "type": "string", "description": "Data do agendamento YYYY-MM-DD" },
+        "horario": { "type": "string", "description": "Horário previsto HH:mm" },
+        "local": { "type": "string", "description": "Doca/Local" },
+        "fornecedor": { "type": "string", "description": "Nome do fornecedor" },
+        "tipoVeiculo": { "type": "string", "description": "Tipo do veículo" },
+        "placa": { "type": "string", "description": "Placa do veículo" },
+        "palets": { "type": "number", "description": "Quantidade de paletes" },
+        "volumes": { "type": "number", "description": "Quantidade de volumes" },
+        "peso": { "type": "number", "description": "Peso estimado em kg" },
+        "status": { "type": "string", "description": "Status (agendado, em_doca, descarregando, finalizado, atrasado, cancelado)" },
+        "nf": { "type": "string", "description": "Número das notas fiscais" },
+        "motorista": { "type": "string", "description": "Nome do motorista" },
+        "observacoes": { "type": "string", "description": "Observações operacionais" },
+        "updatedAt": { "type": "string", "description": "Data de atualização" },
+        "updatedBy": { "type": "string", "description": "Quem atualizou" }
+      },
+      "required": ["data", "fornecedor"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "auth != null",
+        "update": "auth != null",
+        "delete": "auth != null"
+      }
     },
-    "/presence/{uid}": {
-      "schema": "Presence",
-      "description": "User presence"
+    "agenda_settings": {
+      "title": "Configurações da Agenda de Recebimento",
+      "description": "URLs e configurações da planilha de agendamento",
+      "type": "object",
+      "properties": {
+        "sheetCsvUrl": { "type": "string", "description": "URL de publicação CSV da planilha Google" },
+        "sheetViewUrl": { "type": "string", "description": "URL de visualização da planilha" },
+        "autoSync": { "type": "boolean", "description": "Sincronização automática ativa" },
+        "updatedAt": { "type": "string", "description": "Data da alteração" }
+      },
+      "accessControl": {
+        "read": "auth != null",
+        "create": "auth != null",
+        "update": "auth != null",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
     },
-    "/inventory_2027/{docId}": {
-      "schema": "InventoryConfig",
-      "description": "General inventory 2027 information and files"
+    "department_settings": {
+      "title": "Configurações Departamentais",
+      "description": "Metas, limites e parâmetros operacionais de cada setor",
+      "type": "object",
+      "properties": {
+        "departmentId": { "type": "string", "description": "ID do departamento" },
+        "metaCapacidade": { "type": "number", "description": "Capacidade operacional meta" },
+        "metaProdutividade": { "type": "number", "description": "Produtividade esperada" },
+        "turnosAtivos": { "type": "array", "description": "Turnos em funcionamento" }
+      },
+      "accessControl": {
+        "read": "auth != null",
+        "create": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "update": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
+    },
+    "system_audit_logs": {
+      "title": "Logs de Auditoria",
+      "description": "Rastreabilidade de ações críticas executadas",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "Ação executada" },
+        "userId": { "type": "string", "description": "ID do usuário" },
+        "timestamp": { "type": "string", "description": "Momento da ação" }
+      },
+      "accessControl": {
+        "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "create": "auth != null",
+        "update": "false",
+        "delete": "false"
+      }
+    },
+    "kanban_projects": {
+      "title": "Projetos Kanban",
+      "description": "Quadros de projetos e ações estratégicas",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Título do projeto" },
+        "description": { "type": "string", "description": "Descrição do projeto" },
+        "category": { "type": "string", "description": "Categoria do projeto" },
+        "targetDate": { "type": "string", "description": "Data de conclusão alvo" },
+        "status": { "type": "string", "description": "Status (planejamento, em_andamento, concluido, pausado)" },
+        "color": { "type": "string", "description": "Cor de destaque" }
+      },
+      "required": ["title"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "update": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
+    },
+    "kanban_cards": {
+      "title": "Cartões e Ações do Kanban",
+      "description": "Tarefas dos quadros de projetos operacionais",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "ID do projeto" },
+        "columnId": { "type": "string", "description": "ID da coluna" },
+        "title": { "type": "string", "description": "Título da tarefa" },
+        "description": { "type": "string", "description": "Detalhes da ação" },
+        "priority": { "type": "string", "description": "Prioridade" },
+        "departmentId": { "type": "string", "description": "Setor operacional" },
+        "assigneeName": { "type": "string", "description": "Responsável" },
+        "dueDate": { "type": "string", "description": "Data limite" },
+        "startDate": { "type": "string", "description": "Data de início" },
+        "tags": { "type": "array", "description": "Tags da tarefa" },
+        "checklist": { "type": "array", "description": "Itens do checklist" },
+        "order": { "type": "number", "description": "Ordem na coluna" }
+      },
+      "required": ["projectId", "columnId", "title"],
+      "accessControl": {
+        "read": "auth != null",
+        "create": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "update": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
+      }
     }
   }
 }

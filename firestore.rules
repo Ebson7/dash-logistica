@@ -1,120 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: {uid}
-    // Fields:
-    //   - uid: string (required)
-    //   - email: string (required)
-    //   - departmentId: string (required, enum: estoque, recebimento, romaneio_tarde, romaneio_noturno, veiculos, exp_loja, admin)
-    //   - displayName: string (optional)
-    //
-    // Collection: logs
-    // Document ID: {logId}
-    // Fields:
-    //   - date: string (required, YYYY-MM-DD)
-    //   - departmentId: string (required)
-    //   - staffPresent: number (required)
-    //   - occurrences: list (optional)
-    //   - data: map (optional)
-    //
-    // ===============================================================
-
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    
-    function isSignedIn() {
+    function isAuthenticated() {
       return request.auth != null;
     }
-
-    function isVerified() {
-      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'anonymous');
-    }
-
+    
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departmentId == 'admin';
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function isValidLog(data) {
-      return data.keys().hasAll(['date', 'departmentId', 'staffPresent']) &&
-             data.date is string && data.date.size() <= 20 &&
-             data.departmentId is string && data.departmentId.size() <= 50 &&
-             data.staffPresent is number &&
-             data.staffPresent >= 0;
-    }
-
-    function isValidAppointment(data) {
-      return data.date is string && data.date.size() <= 20 &&
-             data.supplier is string && data.supplier.size() <= 200 &&
-             data.collaborator is string && data.collaborator.size() <= 100 &&
-             data.receivingLocation is string && (data.receivingLocation == 'Marsil' || data.receivingLocation == 'OP. Logístico' || data.receivingLocation == 'Boracéia' || data.receivingLocation == 'Outro') &&
-             data.receivingType is string && (data.receivingType == 'Recebimento' || data.receivingType == 'Retorno OP' || data.receivingType == 'Retorno BC') &&
-             (!('staff' in data) || (data.staff is string && data.staff.size() <= 100)) &&
-             (!('requester' in data) || (data.requester is string && data.requester.size() <= 100)) &&
-             (!('orderNumber' in data) || (data.orderNumber is string && data.orderNumber.size() <= 50)) &&
-             (!('vehicle' in data) || (data.vehicle is string && data.vehicle.size() <= 100)) &&
-             (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 10)) &&
-             (!('observation' in data) || (data.observation is string && data.observation.size() <= 1000)) &&
-             (!('pallets' in data) || (data.pallets is number)) &&
-             (!('totalValue' in data) || (data.totalValue is number)) &&
-             (!('status' in data) || (data.status is string && (data.status == 'Agendado' || data.status == 'Aguardando' || data.status == 'Descarregando' || data.status == 'Recebido' || data.status == 'Cancelado')));
+      return isAuthenticated() && 
+        (request.auth.token.email == 'ebsonsilva7@gmail.com' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
-    }
-
-    match /logs/{logId} {
-      allow read: if isSignedIn();
-      allow create, update: if isVerified() && isValidLog(request.resource.data);
+      allow read, create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
-
-    match /settings/{settingId} {
-      allow read: if isSignedIn();
+    
+    match /departments/{deptId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /department_entries/{entryId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    match /collaborators/{collabId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    match /checklist_templates/{templateId} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    match /appointments/{appointmentId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified() && 
-                    isValidAppointment(request.resource.data) &&
-                    request.resource.data.createdAt == request.time;
-      allow update: if isVerified() && (
-                    isValidAppointment(request.resource.data) || 
-                    request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'deleted', 'updatedAt'])
-                    );
-      allow delete: if isAdmin();
-    }
-
-    match /cipa_members/{memberId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isVerified();
-    }
-
-    match /presence/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == uid;
-    }
-
-    match /inventory_2027/{docId} {
-      allow read: if isSignedIn();
+    match /kanban_projects/{projectId} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
+    match /kanban_cards/{cardId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAuthenticated();
     }
   }
 }
