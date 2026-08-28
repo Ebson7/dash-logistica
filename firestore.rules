@@ -5,56 +5,136 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
       return isAuthenticated() && 
         (request.auth.token.email == 'ebsonsilva7@gmail.com' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.departmentId == 'admin' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+         getUserData().departmentId == 'admin' ||
+         getUserData().role == 'admin');
     }
 
+    function isNotViewer() {
+      return isAuthenticated() && 
+        (isAdmin() || getUserData().departmentId != 'viewer');
+    }
+
+    function isDepartment(deptId) {
+      return isAuthenticated() && 
+        (isAdmin() || getUserData().departmentId == deptId);
+    }
+
+    // --- Users Collection ---
     match /users/{userId} {
-      allow read, create, update: if isAuthenticated();
+      allow read: if isAuthenticated();
+      // Allow user to write/update their own profile, or admin to manage any profile
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
+
+    // --- Security & System Settings ---
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
     
+    // --- Master Departments ---
     match /departments/{deptId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
     
+    // --- Department Daily Entries ---
     match /department_entries/{entryId} {
-      allow read, create, update: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
       allow delete: if isAdmin();
     }
     
+    // --- Collaborators Directory ---
     match /collaborators/{collabId} {
-      allow read, create, update: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
       allow delete: if isAdmin();
     }
     
+    // --- Daily Logs & Occurrences ---
+    match /daily_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
+      allow delete: if isAdmin();
+    }
+
+    match /occurrences/{occId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
+      allow delete: if isAdmin();
+    }
+
+    // --- Checklist Templates ---
     match /checklist_templates/{templateId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
+    // --- Agenda Recebimento ---
     match /agenda_recebimento/{agendaId} {
-      allow read, create, update, delete: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isNotViewer();
     }
 
     match /agenda_settings/{settingId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isDepartment('recebimento') || isAdmin();
     }
 
+    // --- Kanban Projects & Actions ---
     match /kanban_projects/{projectId} {
-      allow read, create, update, delete: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isNotViewer();
     }
 
     match /kanban_cards/{cardId} {
-      allow read, create, update, delete: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isNotViewer();
+    }
+
+    // --- Fleet & Vehicles ---
+    match /vehicles/{vehicleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isDepartment('veiculos') || isAdmin();
+    }
+
+    match /vehicles_checklists/{chkId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
+      allow delete: if isAdmin();
+    }
+
+    // --- Inventory & CIPA ---
+    match /inventory_config/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isNotViewer();
+    }
+
+    match /cipa_members/{memberId} {
+      allow read: if isAuthenticated();
+      allow write: if isNotViewer();
+    }
+
+    // --- Immutable Audit Logs (Append-only) ---
+    match /system_audit_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Append-only trail
     }
     
     match /{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }
+

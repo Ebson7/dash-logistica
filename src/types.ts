@@ -118,11 +118,34 @@ export interface DailyLog {
   };
 }
 
+export type UserRole = 'admin' | 'manager' | 'operator' | 'viewer';
+
+export type AppAction = 'view' | 'create' | 'edit' | 'delete' | 'export' | 'manage_settings';
+
+export interface ModulePermissionConfig {
+  moduleId: string;
+  moduleName: string;
+  category: 'Operacional' | 'Gestão & Planejamento' | 'Corporativo' | 'Segurança & TI';
+  description: string;
+  defaultByRole: Record<UserRole, AppAction[]>;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
   departmentId: DepartmentId | 'admin';
   displayName: string;
+  role?: UserRole;
+  status?: 'active' | 'blocked' | 'pending';
+  customPermissions?: Record<string, AppAction[]>;
+  phone?: string;
+  badgeNumber?: string;
+  password?: string;
+  hasCustomPassword?: boolean;
+  passwordUpdatedAt?: any;
+  createdAt?: any;
+  lastLogin?: any;
+  updatedAt?: any;
 }
 
 export interface CipaMember {

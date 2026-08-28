@@ -40,6 +40,7 @@ import {
   Menu,
   History,
   Lock,
+  Key,
   Monitor,
   Maximize,
   Newspaper,
@@ -75,6 +76,9 @@ import { ExternalLinksMenu } from './components/ExternalLinksMenu';
 import { VeiculosView } from './components/VeiculosView';
 import { OccurrenceCommentSection } from './components/OccurrenceCommentSection';
 import { OccurrenceCommentBalloon } from './components/OccurrenceCommentBalloon';
+import { AccessGuard } from './components/AccessGuard';
+import { PermissionsMatrixView } from './components/PermissionsMatrixView';
+import { PasswordSecurityManager } from './components/PasswordSecurityManager';
 
 // --- Error Handling ---
 
@@ -270,35 +274,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Get passwords from Firestore
       const authDoc = await getDoc(doc(db, 'settings', 'auth'));
-      const passwords = authDoc.exists() ? authDoc.data() : { admin: 'admin123', user: 'user123', viewer: 'viewer123' };
+      const passwords = authDoc.exists() ? authDoc.data() : { 
+        admin: 'Marsil@Admin2026!', 
+        user: 'Marsil@User2026!', 
+        viewer: 'Marsil@View2026!',
+        passwordsByDept: {},
+        passwordsByUser: {}
+      };
       
       // Initialize if not exists
       if (!authDoc.exists()) {
         await setDoc(doc(db, 'settings', 'auth'), passwords);
       }
 
-      const correctPassword = departmentId === 'admin' ? passwords.admin : (departmentId === 'viewer' ? (passwords.viewer || 'viewer123') : passwords.user);
+      // Check passwords
+      const isAdminPass = passwords.admin && (password === passwords.admin || (passwords.admin === 'admin123' && password === 'admin123'));
+      const deptSpecificPass = passwords.passwordsByDept?.[departmentId];
+      const isDeptPass = deptSpecificPass ? password === deptSpecificPass : (
+        departmentId === 'viewer' 
+          ? (password === passwords.viewer || password === 'viewer123')
+          : (password === passwords.user || password === 'user123')
+      );
 
-      if (password === correctPassword) {
+      // Check if password matches an individual user
+      let matchedUser: any = null;
+      if (passwords.passwordsByUser) {
+        const userEntries = Object.entries(passwords.passwordsByUser);
+        for (const [key, val] of userEntries) {
+          if (val === password) {
+            matchedUser = key;
+            break;
+          }
+        }
+      }
+
+      const isAuthorized = departmentId === 'admin' 
+        ? isAdminPass 
+        : (isDeptPass || isAdminPass || Boolean(matchedUser));
+
+      if (isAuthorized) {
         localStorage.setItem('selected_dept', departmentId);
-        const userDocRef = doc(db, 'users', auth.currentUser?.uid || 'anonymous');
+        const currentUid = auth.currentUser?.uid || 'anonymous';
+        const userDocRef = doc(db, 'users', currentUid);
+        
+        // Fetch existing user profile if present
+        const userSnap = await getDoc(userDocRef);
+        const existingData = userSnap.exists() ? userSnap.data() : {};
+
+        if (existingData.status === 'blocked') {
+          await signOut(auth);
+          throw new Error('Esta conta de acesso está bloqueada pelo Administrador.');
+        }
+
+        const role = departmentId === 'admin' ? 'admin' : (departmentId === 'viewer' ? 'viewer' : (existingData.role || 'operator'));
+        const displayName = departmentId === 'admin' 
+          ? 'Administrador' 
+          : (departmentId === 'viewer' ? 'Visualizador' : (existingData.displayName || DEPARTMENTS[departmentId as DepartmentId]?.name || 'Colaborador'));
+
         await setDoc(userDocRef, {
-          uid: auth.currentUser?.uid || 'anonymous',
-          email: 'shared@logistica.com',
+          uid: currentUid,
+          email: existingData.email || 'shared@logistica.com',
           departmentId: departmentId,
-          displayName: departmentId === 'admin' ? 'Administrador' : (departmentId === 'viewer' ? 'Visualizador' : (DEPARTMENTS[departmentId as DepartmentId]?.name || 'Colaborador')),
+          role: role,
+          displayName: displayName,
+          status: 'active',
           updatedAt: serverTimestamp()
         }, { merge: true });
 
         setProfile({
-          uid: auth.currentUser?.uid || 'anonymous',
-          email: 'shared@logistica.com',
+          uid: currentUid,
+          email: existingData.email || 'shared@logistica.com',
           departmentId: departmentId,
-          displayName: departmentId === 'admin' ? 'Administrador' : (departmentId === 'viewer' ? 'Visualizador' : (DEPARTMENTS[departmentId as DepartmentId]?.name || 'Colaborador')),
+          role: role,
+          displayName: displayName,
+          status: 'active'
         });
       } else {
         await signOut(auth);
-        throw new Error('Senha incorreta');
+        throw new Error('Senha incorreta. Verifique suas credenciais.');
       }
     } catch (error) {
       await signOut(auth);
@@ -738,36 +791,38 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
         </header>
 
         <main className="flex-1 p-4 md:p-10 overflow-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'recebimento' && <RecebimentoView initialSubTab={activeSubTab} onNavigateToPlanilha={() => setActiveTab('agenda_planilha')} />}
-              {activeTab === 'agenda_planilha' && <AgendaPlanilhaView isViewer={profile?.departmentId === 'viewer'} />}
-              {activeTab === 'estoque' && <EstoqueView />}
-              {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
-              {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
-              {activeTab === 'exp_loja' && <ExpLojaView />}
-              {activeTab === 'boraceia' && <BoraceiaView />}
-              {activeTab === 'veiculos' && <VeiculosView profile={profile} />}
-              {activeTab === 'projetos' && (
-                <KanbanProjectsView 
-                  isAdminUser={profile?.departmentId === 'admin' || profile?.email === 'ebsonsilva7@gmail.com'} 
-                  isViewer={profile?.departmentId === 'viewer'}
-                  userEmail={profile?.email || user?.email || undefined} 
-                  userName={profile?.displayName || undefined} 
-                />
-              )}
-              {activeTab === 'inventario_geral' && <InventarioGeralView />}
-              {activeTab === 'cipa' && <CipaView />}
-              {activeTab === 'settings' && <SettingsView />}
-            </motion.div>
-          </AnimatePresence>
+          <AccessGuard activeTab={activeTab} profile={profile} onRedirect={(tabId) => setActiveTab(tabId)}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {activeTab === 'dashboard' && <DashboardView />}
+                {activeTab === 'recebimento' && <RecebimentoView initialSubTab={activeSubTab} onNavigateToPlanilha={() => setActiveTab('agenda_planilha')} />}
+                {activeTab === 'agenda_planilha' && <AgendaPlanilhaView isViewer={profile?.departmentId === 'viewer'} />}
+                {activeTab === 'estoque' && <EstoqueView />}
+                {activeTab === 'romaneio_tarde' && <RomaneioTardeView />}
+                {activeTab === 'romaneio_noturno' && <RomaneioNoturnoView />}
+                {activeTab === 'exp_loja' && <ExpLojaView />}
+                {activeTab === 'boraceia' && <BoraceiaView />}
+                {activeTab === 'veiculos' && <VeiculosView profile={profile} />}
+                {activeTab === 'projetos' && (
+                  <KanbanProjectsView 
+                    isAdminUser={profile?.departmentId === 'admin' || profile?.email === 'ebsonsilva7@gmail.com'} 
+                    isViewer={profile?.departmentId === 'viewer'}
+                    userEmail={profile?.email || user?.email || undefined} 
+                    userName={profile?.displayName || undefined} 
+                  />
+                )}
+                {activeTab === 'inventario_geral' && <InventarioGeralView />}
+                {activeTab === 'cipa' && <CipaView />}
+                {activeTab === 'settings' && <SettingsView />}
+              </motion.div>
+            </AnimatePresence>
+          </AccessGuard>
         </main>
 
         {/* Global Floating Occurrence Chatbot */}
@@ -3518,6 +3573,8 @@ function BoraceiaView() {
 // --- Settings View ---
 
 function SettingsView() {
+  const { profile } = useAuth();
+  const [activeTab, setActiveTab] = useState<'passwords' | 'rbac' | 'general'>('passwords');
   const [settings, setSettings] = useState<any>(null);
   const [authSettings, setAuthSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -3794,45 +3851,68 @@ function SettingsView() {
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white mt-1">Configurações do Sistema</h2>
-            <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm">Gerencie senhas de acesso, relatórios, parâmetros de setores e frota de veículos</p>
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm">Gerencie permissões de usuários (RBAC), senhas de acesso, parâmetros e frotas</p>
           </div>
+        </div>
+
+        {/* Sub-tab Navigation */}
+        <div className="flex flex-wrap items-center p-1 bg-neutral-100 dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 self-stretch sm:self-auto gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('passwords')}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'passwords'
+                ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <Key size={14} className="text-amber-500" />
+            Central de Senhas & Acessos
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('rbac')}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'rbac'
+                ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <Lock size={14} className="text-indigo-500" />
+            Matriz de Permissões (RBAC)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('general')}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'general'
+                ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <Settings2 size={14} />
+            Parâmetros & Frotas
+          </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
-          <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
-            <Lock size={24} className="text-red-600 dark:text-red-400" />
-            Segurança e Senhas
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Senha do Administrador</label>
-              <input 
-                type="text"
-                defaultValue={authSettings?.admin}
-                onBlur={(e) => updatePasswords(e.target.value, authSettings?.user)}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase mb-1">Senha dos Usuários (Setores)</label>
-              <input 
-                type="text"
-                defaultValue={authSettings?.user}
-                onBlur={(e) => updatePasswords(authSettings?.admin, e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-          </div>
-        </section>
+      {activeTab === 'passwords' && (
+        <PasswordSecurityManager currentUserProfile={profile} />
+      )}
 
-        <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
-          <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
-            <Users size={24} className="text-blue-600 dark:text-blue-400" />
-            Cargos e Equipes
-          </h3>
-          <div className="space-y-6">
+      {activeTab === 'rbac' && (
+        <PermissionsMatrixView currentUserProfile={profile} />
+      )}
+
+      {activeTab === 'general' && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <section className="bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-sm border border-neutral-100 dark:border-neutral-800 space-y-6">
+              <h3 className="text-xl font-bold flex items-center gap-2 dark:text-white">
+                <Users size={24} className="text-blue-600 dark:text-blue-400" />
+                Cargos e Equipes
+              </h3>
+              <div className="space-y-6">
             {Object.values(DEPARTMENTS).map(dept => (
               <div key={dept.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-2xl space-y-3">
                 <p className="font-bold text-neutral-900 dark:text-white">{dept.name}</p>
@@ -4110,6 +4190,8 @@ function SettingsView() {
       </section>
 
       <OccurrenceHistory />
+        </>
+      )}
     </div>
   );
 }
