@@ -36,6 +36,7 @@ import { db } from '../firebase';
 import { DepartmentId, UserProfile, UserRole } from '../types';
 import { DEPARTMENTS } from '../constants';
 import { validatePassword, generateSecurePassword, PasswordValidationResult } from '../utils/passwordSecurity';
+import { logAuditEvent } from '../utils/auditLogger';
 
 interface PasswordSecurityManagerProps {
   currentUserProfile: UserProfile | null;
@@ -194,6 +195,22 @@ export function PasswordSecurityManager({ currentUserProfile }: PasswordSecurity
         }, { merge: true });
       }
 
+      // Record Audit Log
+      logAuditEvent({
+        action: 'PASSWORD_CHANGE_ADMIN',
+        category: 'AUTH_SECURITY',
+        severity: 'critical',
+        description: `Senha Master do Administrador alterada por ${currentUserProfile?.displayName || currentUserProfile?.email || 'Admin'}.`,
+        targetId: 'settings/auth',
+        targetType: 'auth_security',
+        targetName: 'Senha Master Admin',
+        actorProfile: currentUserProfile,
+        details: {
+          updatedByEmail: currentUserProfile?.email || 'admin',
+          timestamp: new Date().toISOString()
+        }
+      });
+
       setSaveSuccessMsg('Sua senha de Administrador foi alterada com sucesso!');
       setAdminNewPassword('');
       setAdminConfirmPassword('');
@@ -230,7 +247,25 @@ export function PasswordSecurityManager({ currentUserProfile }: PasswordSecurity
         updatedAt: serverTimestamp()
       }, { merge: true });
 
-      setSaveSuccessMsg(`Senha do setor "${deptId === 'viewer' ? 'Visualizador' : (DEPARTMENTS[deptId as DepartmentId]?.name || deptId)}" atualizada com sucesso!`);
+      const deptName = deptId === 'viewer' ? 'Visualizador' : (DEPARTMENTS[deptId as DepartmentId]?.name || deptId);
+
+      // Record Audit Log
+      logAuditEvent({
+        action: 'PASSWORD_CHANGE_DEPT',
+        category: 'AUTH_SECURITY',
+        severity: 'warning',
+        description: `Senha do setor "${deptName}" (${deptId}) redefinida por ${currentUserProfile?.displayName || currentUserProfile?.email || 'Admin'}.`,
+        targetId: deptId,
+        targetType: 'department_password',
+        targetName: deptName,
+        actorProfile: currentUserProfile,
+        details: {
+          departmentId: deptId,
+          departmentName: deptName
+        }
+      });
+
+      setSaveSuccessMsg(`Senha do setor "${deptName}" atualizada com sucesso!`);
     } catch (err: any) {
       setSaveErrorMsg(`Erro ao salvar senha do setor: ${err.message}`);
     } finally {
@@ -272,6 +307,23 @@ export function PasswordSecurityManager({ currentUserProfile }: PasswordSecurity
         passwordsByUser: updatedByUser,
         updatedAt: serverTimestamp()
       }, { merge: true });
+
+      // Record Audit Log
+      logAuditEvent({
+        action: 'PASSWORD_CHANGE_USER',
+        category: 'AUTH_SECURITY',
+        severity: 'warning',
+        description: `Senha individual do colaborador "${selectedUserForPassword.displayName || selectedUserForPassword.email}" redefinida.`,
+        targetId: selectedUserForPassword.uid,
+        targetType: 'user_password',
+        targetName: selectedUserForPassword.displayName || selectedUserForPassword.email,
+        actorProfile: currentUserProfile,
+        details: {
+          targetUid: selectedUserForPassword.uid,
+          targetEmail: selectedUserForPassword.email,
+          targetRole: selectedUserForPassword.role
+        }
+      });
 
       setSaveSuccessMsg(`Senha do usuário ${selectedUserForPassword.displayName || selectedUserForPassword.email} definida com sucesso!`);
       setSelectedUserForPassword(null);
@@ -336,6 +388,25 @@ export function PasswordSecurityManager({ currentUserProfile }: PasswordSecurity
         passwordsByUser: updatedByUser,
         updatedAt: serverTimestamp()
       }, { merge: true });
+
+      // Record Audit Log
+      logAuditEvent({
+        action: 'USER_CREATE',
+        category: 'PERMISSIONS_RBAC',
+        severity: 'info',
+        description: `Novo colaborador "${newUserData.displayName}" cadastrado com papel "${newUserData.role}" no setor "${newUserData.departmentId}".`,
+        targetId: generatedUid,
+        targetType: 'user_profile',
+        targetName: newUserData.displayName,
+        actorProfile: currentUserProfile,
+        details: {
+          newUserEmail: newUserData.email,
+          newUserName: newUserData.displayName,
+          departmentId: newUserData.departmentId,
+          role: newUserData.role,
+          badgeNumber: newUserData.badgeNumber
+        }
+      });
 
       setSaveSuccessMsg(`Novo usuário "${newUserData.displayName}" cadastrado com senha com sucesso!`);
       setIsCreateUserModalOpen(false);

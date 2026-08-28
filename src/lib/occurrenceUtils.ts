@@ -12,6 +12,8 @@ import {
 import { db } from '../firebase';
 import { Occurrence, OccurrenceComment, UserProfile } from '../types';
 import { handleFirestoreError, OperationType } from './firestoreUtils';
+import { sendSystemNotification } from '../utils/notificationService';
+import { logAuditEvent } from '../utils/auditLogger';
 
 interface AddCommentParams {
   logId?: string;
@@ -128,6 +130,36 @@ export async function addCommentToOccurrence({
       occurrences: updatedOccurrences,
       updatedAt: serverTimestamp()
     });
+
+    try {
+      const dept = departmentId || targetLogData.departmentId || 'all';
+      await sendSystemNotification({
+        title: `Novo comentário em ocorrência`,
+        message: `${newComment.authorName}: "${newComment.text.slice(0, 80)}${newComment.text.length > 80 ? '...' : ''}"`,
+        type: 'occurrence',
+        severity: 'info',
+        targetType: dept === 'all' ? 'all' : 'department',
+        targetDepartment: dept,
+        linkTab: dept,
+        actionLabel: 'Ver Ocorrência',
+        createdBy: {
+          uid: profile?.uid || 'system',
+          name: newComment.authorName,
+          department: profile?.departmentId
+        }
+      });
+
+      await logAuditEvent({
+        action: 'comment_created',
+        category: 'operations',
+        target: `Ocorrência (${dept})`,
+        details: `Comentário adicionado: "${newComment.text.slice(0, 60)}"`,
+        severity: 'info',
+        user: profile
+      });
+    } catch (err) {
+      console.error('Failed to send notification for comment:', err);
+    }
 
     return true;
   } catch (error) {

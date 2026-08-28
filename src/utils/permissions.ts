@@ -224,6 +224,18 @@ export const MODULE_PERMISSIONS_MATRIX: ModulePermissionConfig[] = [
     },
   },
   {
+    moduleId: 'audit_logs',
+    moduleName: 'Trilha de Auditoria & Logs de Sistema',
+    category: 'Segurança & TI',
+    description: 'Rastreabilidade e log de alterações, senhas, acessos, operações e exclusões.',
+    defaultByRole: {
+      admin: ['view', 'export'],
+      manager: ['view'],
+      operator: [],
+      viewer: ['view'],
+    },
+  },
+  {
     moduleId: 'settings',
     moduleName: 'Configurações do Sistema & Senhas',
     category: 'Segurança & TI',
@@ -313,6 +325,12 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
     allowedDepartments: ['admin', 'viewer', 'recebimento', 'estoque', 'romaneio_tarde', 'romaneio_noturno', 'exp_loja', 'boraceia', 'veiculos'],
     allowAllAuthenticated: true,
     description: 'Portal de segurança e saúde ocupacional com acesso a toda a empresa.',
+  },
+  audit_logs: {
+    tabId: 'audit_logs',
+    name: 'Trilha de Auditoria (Audit Logs)',
+    allowedDepartments: ['admin', 'viewer'],
+    description: 'Visualização completa da trilha de auditoria e conformidade da empresa.',
   },
   settings: {
     tabId: 'settings',

@@ -57,6 +57,7 @@ import {
 } from '../utils/permissions';
 import { DEPARTMENTS } from '../constants';
 import { validatePassword, generateSecurePassword } from '../utils/passwordSecurity';
+import { logAuditEvent } from '../utils/auditLogger';
 
 interface PermissionsMatrixViewProps {
   currentUserProfile?: UserProfile | null;
@@ -185,6 +186,37 @@ export function PermissionsMatrixView({ currentUserProfile }: PermissionsMatrixV
       }
 
       await updateDoc(userRef, updateData);
+
+      // Record Audit Event
+      const isRoleChanged = editingUser.role !== selectedRole;
+      const isStatusChanged = editingUser.status !== selectedStatus;
+      const isDeptChanged = editingUser.departmentId !== selectedDept;
+      const isPassChanged = !!userPasswordInput.trim();
+
+      logAuditEvent({
+        action: isRoleChanged ? 'USER_ROLE_CHANGE' : isStatusChanged ? (selectedStatus === 'blocked' ? 'USER_BLOCK' : 'USER_UNBLOCK') : isPassChanged ? 'PASSWORD_CHANGE_USER' : 'USER_UPDATE',
+        category: 'PERMISSIONS_RBAC',
+        severity: isStatusChanged && selectedStatus === 'blocked' ? 'critical' : isRoleChanged || isPassChanged ? 'warning' : 'info',
+        description: `Perfil do colaborador "${editingUser.displayName || editingUser.email}" atualizado. [Papel: ${selectedRole}, Setor: ${selectedDept}, Status: ${selectedStatus}${isPassChanged ? ', Nova Senha Definida' : ''}]`,
+        targetId: editingUser.uid,
+        targetType: 'user_profile',
+        targetName: editingUser.displayName || editingUser.email,
+        actorProfile: currentUserProfile,
+        details: {
+          previous: {
+            role: editingUser.role,
+            departmentId: editingUser.departmentId,
+            status: editingUser.status
+          },
+          updated: {
+            role: selectedRole,
+            departmentId: selectedDept,
+            status: selectedStatus,
+            hasPasswordChanged: isPassChanged
+          }
+        }
+      });
+
       showToast(`Permissões e credenciais de ${editingUser.displayName || editingUser.email} atualizadas com sucesso!`, 'success');
       setEditingUser(null);
     } catch (error: any) {

@@ -38,6 +38,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { OccurrenceCommentSection } from './OccurrenceCommentSection';
 import { OccurrenceCommentBalloon } from './OccurrenceCommentBalloon';
+import { sendSystemNotification } from '../utils/notificationService';
+import { logAuditEvent } from '../utils/auditLogger';
 
 interface OccurrenceChatbotProps {
   currentDepartmentId?: string;
@@ -167,6 +169,39 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
           updatedAt: serverTimestamp(),
           timestamp: serverTimestamp()
         });
+      }
+
+      // Dispatch Real-Time System Notification
+      try {
+        const deptName = DEPARTMENTS[selectedDept]?.name || selectedDept;
+        await sendSystemNotification({
+          title: isCritical ? `🚨 Alerta Crítico: ${title.trim()}` : `Ocorrência: ${title.trim()}`,
+          message: `Setor ${deptName}: ${description.trim().slice(0, 100)}${description.trim().length > 100 ? '...' : ''}`,
+          type: isCritical ? 'critical_alert' : 'occurrence',
+          severity: isCritical ? 'critical' : severity === 'high' ? 'warning' : 'info',
+          targetType: isCritical ? 'all' : 'department',
+          targetDepartment: isCritical ? undefined : selectedDept,
+          soundAlert: true,
+          isPinned: isCritical,
+          linkTab: selectedDept,
+          actionLabel: `Ver ${deptName}`,
+          createdBy: {
+            uid: profile?.uid || 'chatbot',
+            name: profile?.displayName || 'Assistente IA',
+            department: profile?.departmentId
+          }
+        });
+
+        await logAuditEvent({
+          action: isCritical ? 'critical_alert_broadcast' : 'occurrence_created',
+          category: 'operations',
+          target: `Assistente IA / ${deptName}`,
+          details: `Ocorrência ${isCritical ? 'CRÍTICA ' : ''}criada: "${title.trim()}" (Gravidade: ${severity})`,
+          severity: isCritical ? 'critical' : severity === 'high' ? 'warning' : 'info',
+          user: profile
+        });
+      } catch (err) {
+        console.error('Error dispatching chatbot occurrence notification:', err);
       }
 
       setSuccessMessage('Ocorrência registrada e comunicada à equipe!');

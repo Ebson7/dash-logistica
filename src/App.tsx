@@ -64,7 +64,8 @@ import {
   CheckCircle2,
   Save,
   Boxes,
-  Kanban
+  Kanban,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AgendaPlanilhaView } from './components/AgendaPlanilhaView';
@@ -79,6 +80,14 @@ import { OccurrenceCommentBalloon } from './components/OccurrenceCommentBalloon'
 import { AccessGuard } from './components/AccessGuard';
 import { PermissionsMatrixView } from './components/PermissionsMatrixView';
 import { PasswordSecurityManager } from './components/PasswordSecurityManager';
+import { AuditLogsView } from './components/AuditLogsView';
+import { logAuditEvent } from './utils/auditLogger';
+import { useRealtimeNotifications } from './hooks/useRealtimeNotifications';
+import { NotificationCenter } from './components/NotificationCenter';
+import { NotificationToasts } from './components/NotificationToasts';
+import { BroadcastAlertModal } from './components/BroadcastAlertModal';
+import { TopBarHeader } from './components/TopBarHeader';
+import { sendSystemNotification } from './utils/notificationService';
 
 // --- Error Handling ---
 
@@ -322,6 +331,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const existingData = userSnap.exists() ? userSnap.data() : {};
 
         if (existingData.status === 'blocked') {
+          logAuditEvent({
+            action: 'LOGIN_FAILURE',
+            category: 'AUTH_SECURITY',
+            severity: 'critical',
+            description: `Tentativa de login bloqueada para a conta "${existingData.displayName || existingData.email || currentUid}" no setor "${departmentId}".`,
+            targetId: currentUid,
+            targetType: 'user_account',
+            targetName: existingData.displayName || existingData.email,
+            details: {
+              attemptedDepartment: departmentId,
+              status: 'blocked'
+            }
+          });
           await signOut(auth);
           throw new Error('Esta conta de acesso está bloqueada pelo Administrador.');
         }
@@ -341,15 +363,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updatedAt: serverTimestamp()
         }, { merge: true });
 
-        setProfile({
+        const newProfile: UserProfile = {
           uid: currentUid,
           email: existingData.email || 'shared@logistica.com',
           departmentId: departmentId,
-          role: role,
+          role: role as any,
           displayName: displayName,
           status: 'active'
+        };
+
+        setProfile(newProfile);
+
+        // Record Login Audit Log
+        logAuditEvent({
+          action: 'LOGIN_SUCCESS',
+          category: 'AUTH_SECURITY',
+          severity: 'info',
+          description: `Login efetuado com sucesso no setor "${departmentId}" pelo usuário "${displayName}".`,
+          targetId: currentUid,
+          targetType: 'user_session',
+          targetName: displayName,
+          actorProfile: newProfile,
+          details: {
+            departmentId,
+            role,
+            loginMethod: departmentId === 'admin' ? 'master_admin_password' : 'department_or_user_password'
+          }
         });
       } else {
+        // Record Failed Login Audit Log
+        logAuditEvent({
+          action: 'LOGIN_FAILURE',
+          category: 'AUTH_SECURITY',
+          severity: 'warning',
+          description: `Falha de autenticação (senha incorreta) ao tentar acessar como "${departmentId}".`,
+          targetId: departmentId,
+          targetType: 'auth_credential',
+          targetName: departmentId,
+          details: {
+            attemptedDepartment: departmentId,
+            reason: 'invalid_password'
+          }
+        });
         await signOut(auth);
         throw new Error('Senha incorreta. Verifique suas credenciais.');
       }
@@ -360,6 +415,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    if (profile) {
+      logAuditEvent({
+        action: 'LOGOUT',
+        category: 'AUTH_SECURITY',
+        severity: 'info',
+        description: `Sessão encerrada pelo usuário "${profile.displayName || profile.email}" (${profile.departmentId}).`,
+        targetId: profile.uid,
+        targetType: 'user_session',
+        targetName: profile.displayName,
+        actorProfile: profile
+      });
+    }
     localStorage.removeItem('selected_dept');
     await signOut(auth);
   };
@@ -477,6 +544,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
     { id: 'projetos', name: 'Projetos & Kanban', icon: Kanban, category: 'mgmt' },
     { id: 'inventario_geral', name: 'Inventário Geral', icon: Boxes, category: 'mgmt' },
     { id: 'cipa', name: 'CIPA', icon: ShieldCheck, category: 'mgmt' },
+    { id: 'audit_logs', name: 'Trilha de Auditoria', icon: Shield, category: 'mgmt' },
   ];
 
   if (profile?.departmentId === 'admin') {
@@ -486,7 +554,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
   const filteredMenu = profile?.departmentId === 'admin'
     ? allMenuItems 
     : profile?.departmentId === 'viewer'
-      ? allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'recebimento' || item.id === 'projetos' || item.id === 'cipa' || item.id === 'inventario_geral')
+      ? allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'recebimento' || item.id === 'projetos' || item.id === 'cipa' || item.id === 'inventario_geral' || item.id === 'audit_logs')
       : allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'projetos' || item.id === 'cipa' || item.id === 'inventario_geral' || item.id === profile?.departmentId);
 
   const categories: { key: 'main' | 'ops' | 'mgmt'; label: string }[] = [
@@ -681,80 +749,29 @@ export default function App() {
 
 function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: any) => void }) {
   const { user, profile, loading } = useAuth();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<any>('operation');
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
 
-  // Notification System
-  useEffect(() => {
-    if ("Notification" in window) {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Monitor Critical Logs
-  useEffect(() => {
-    if (!profile) return;
-    
-    const q = query(
-      collection(db, 'logs'), 
-      where('isCritical', '==', true),
-      orderBy('timestamp', 'desc'),
-      limit(1)
-    );
-
-    let isFirstRun = true;
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (isFirstRun) {
-        isFirstRun = false;
-        return;
-      }
-      
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const data = change.doc.data();
-          new Notification("🚨 Ocorrência Crítica Registrada", {
-            body: `Departamento: ${data.departmentId}\nObs: ${data.observations || 'Sem detalhes'}`,
-            icon: '/favicon.ico'
-          });
-        }
-      });
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
-
-    return () => unsubscribe();
-  }, [profile]);
-
-  // Monitor Daily Appointment Value (> 2M)
-  useEffect(() => {
-    if (!profile) return;
-    
-    const todayStr = new Date().toISOString().split('T')[0];
-    const q = query(
-      collection(db, 'appointments'),
-      where('date', '==', todayStr),
-      where('deleted', '==', false)
-    );
-
-    let hasNotifiedToday = false;
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const total = snapshot.docs.reduce((sum, doc) => sum + (doc.data().totalValue || 0), 0);
-      
-      if (total >= 2000000 && !hasNotifiedToday) {
-        new Notification("💰 Meta de Valor Atingida", {
-          body: `O valor total de agendamentos para hoje superou R$ 2.000.000,00!\nTotal atual: R$ ${total.toLocaleString('pt-BR')}`,
-          icon: '/favicon.ico'
-        });
-        hasNotifiedToday = true;
-      } else if (total < 2000000) {
-        hasNotifiedToday = false;
-      }
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'appointments'));
-
-    return () => unsubscribe();
-  }, [profile]);
+  // Unified Real-Time Notification & Alert Hook
+  const {
+    notifications,
+    unreadCount,
+    unreadCriticalCount,
+    activeToasts,
+    isMuted,
+    toggleMute,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    dismissToast
+  } = useRealtimeNotifications(profile);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
         <Loader2 className="animate-spin text-blue-600" size={40} />
       </div>
     );
@@ -774,21 +791,20 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
       />
       
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header */}
-        <header className="lg:hidden bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 p-4 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Truck className="text-white w-5 h-5" />
-            </div>
-            <span className="font-bold text-lg dark:text-white">Marsil Log</span>
-          </div>
-          <button 
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-lg text-neutral-600 dark:text-neutral-400"
-          >
-            <Menu size={24} />
-          </button>
-        </header>
+        {/* Top Bar Header with live notifications, audio toggle, dark mode, and module breadcrumbs */}
+        <TopBarHeader
+          activeTab={activeTab}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+          unreadCount={unreadCount}
+          unreadCriticalCount={unreadCriticalCount}
+          onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+          onOpenBroadcastModal={() => setIsBroadcastModalOpen(true)}
+          isDarkMode={isDarkMode}
+          onToggleDarkMode={toggleDarkMode}
+          profile={profile}
+        />
 
         <main className="flex-1 p-4 md:p-10 overflow-auto">
           <AccessGuard activeTab={activeTab} profile={profile} onRedirect={(tabId) => setActiveTab(tabId)}>
@@ -819,11 +835,50 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
                 )}
                 {activeTab === 'inventario_geral' && <InventarioGeralView />}
                 {activeTab === 'cipa' && <CipaView />}
+                {activeTab === 'audit_logs' && <AuditLogsView currentUserProfile={profile} />}
                 {activeTab === 'settings' && <SettingsView />}
               </motion.div>
             </AnimatePresence>
           </AccessGuard>
         </main>
+
+        {/* Real-time Toast Notifications */}
+        <NotificationToasts
+          toasts={activeToasts}
+          onDismiss={dismissToast}
+          onNavigate={(tabId, params) => {
+            setActiveTab(tabId);
+            if (params?.subTab) setActiveSubTab(params.subTab);
+          }}
+          onMarkAsRead={markAsRead}
+        />
+
+        {/* Notification Center Popover / Drawer */}
+        <NotificationCenter
+          isOpen={isNotificationCenterOpen}
+          onClose={() => setIsNotificationCenterOpen(false)}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          unreadCriticalCount={unreadCriticalCount}
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onDeleteNotification={deleteNotification}
+          onNavigateTab={(tabId, params) => {
+            setActiveTab(tabId);
+            if (params?.subTab) setActiveSubTab(params.subTab);
+          }}
+          onOpenBroadcastModal={() => setIsBroadcastModalOpen(true)}
+          currentUserProfile={profile}
+        />
+
+        {/* Admin/Manager Broadcast Alert Modal */}
+        <BroadcastAlertModal
+          isOpen={isBroadcastModalOpen}
+          onClose={() => setIsBroadcastModalOpen(false)}
+          currentUserProfile={profile}
+        />
 
         {/* Global Floating Occurrence Chatbot */}
         <OccurrenceChatbot currentDepartmentId={activeTab} />
@@ -1788,6 +1843,40 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
           isCritical: isCritical || existingLog.isCritical || false,
           timestamp: serverTimestamp() // For notification ordering
         }, { merge: true });
+
+        // Dispatch Real-time Notification
+        try {
+          const deptName = DEPARTMENTS[departmentId]?.name || departmentId;
+          await sendSystemNotification({
+            title: isCritical ? `🚨 Ocorrência Crítica: ${occurrenceTitle}` : `Nova Ocorrência: ${occurrenceTitle}`,
+            message: `Setor ${deptName}: ${occurrence.slice(0, 100)}${occurrence.length > 100 ? '...' : ''}`,
+            type: isCritical ? 'critical_alert' : 'occurrence',
+            severity: isCritical ? 'critical' : severity === 'high' ? 'warning' : 'info',
+            targetType: isCritical ? 'all' : 'department',
+            targetDepartment: isCritical ? undefined : departmentId,
+            soundAlert: true,
+            isPinned: isCritical,
+            linkTab: departmentId,
+            actionLabel: `Ver ${deptName}`,
+            createdBy: {
+              uid: profile?.uid || 'user',
+              name: profile?.displayName || 'Operador',
+              department: departmentId
+            }
+          });
+
+          await logAuditEvent({
+            action: isCritical ? 'critical_alert_broadcast' : 'occurrence_created',
+            category: 'operations',
+            target: `Setor ${deptName}`,
+            details: `Ocorrência ${isCritical ? 'CRÍTICA ' : ''}registrada: "${occurrenceTitle}" (Gravidade: ${severity})`,
+            severity: isCritical ? 'critical' : severity === 'high' ? 'warning' : 'info',
+            user: profile
+          });
+        } catch (err) {
+          console.error('Failed to dispatch notification for occurrence:', err);
+        }
+
         setOccurrenceTitle('');
         setOccurrence('');
         setIsCritical(false);
@@ -3574,7 +3663,7 @@ function BoraceiaView() {
 
 function SettingsView() {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'passwords' | 'rbac' | 'general'>('passwords');
+  const [activeTab, setActiveTab] = useState<'passwords' | 'rbac' | 'audit_logs' | 'general'>('passwords');
   const [settings, setSettings] = useState<any>(null);
   const [authSettings, setAuthSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -3883,6 +3972,18 @@ function SettingsView() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('audit_logs')}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'audit_logs'
+                ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <Shield size={14} className="text-emerald-500" />
+            Trilha de Auditoria (Logs)
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('general')}
             className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
               activeTab === 'general'
@@ -3902,6 +4003,10 @@ function SettingsView() {
 
       {activeTab === 'rbac' && (
         <PermissionsMatrixView currentUserProfile={profile} />
+      )}
+
+      {activeTab === 'audit_logs' && (
+        <AuditLogsView currentUserProfile={profile} />
       )}
 
       {activeTab === 'general' && (

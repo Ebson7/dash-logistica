@@ -253,3 +253,137 @@ export interface InventoryConfigData {
   updatedBy?: string;
 }
 
+export type AuditActionType =
+  // Auth & Security
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILED'
+  | 'LOGOUT'
+  | 'PASSWORD_CHANGE_ADMIN'
+  | 'PASSWORD_CHANGE_DEPT'
+  | 'PASSWORD_CHANGE_USER'
+  | 'SECURITY_POLICY_UPDATE'
+  // RBAC & User Management
+  | 'USER_CREATE'
+  | 'USER_UPDATE'
+  | 'USER_BLOCK'
+  | 'USER_UNBLOCK'
+  | 'USER_DELETE'
+  | 'ROLE_CHANGE'
+  | 'PERMISSIONS_CUSTOMIZE'
+  // Occurrences & Comments
+  | 'OCCURRENCE_CREATE'
+  | 'OCCURRENCE_UPDATE'
+  | 'OCCURRENCE_DELETE'
+  | 'OCCURRENCE_RESOLVE'
+  | 'COMMENT_ADD'
+  | 'COMMENT_DELETE'
+  // Operations & Logistics
+  | 'DAILY_LOG_SAVE'
+  | 'RECEIVING_SCHEDULE_UPDATE'
+  | 'RECEIVING_SCHEDULE_DUPLICATE'
+  | 'RECEIVING_SCHEDULE_DELETE'
+  | 'VEHICLE_REGISTER'
+  | 'VEHICLE_STATUS_UPDATE'
+  | 'VEHICLE_CHECKLIST_SAVE'
+  | 'VEHICLE_DELETE'
+  | 'BORACEIA_TRANSFER_RECORD'
+  | 'STOCK_POSITION_UPDATE'
+  // Projects, Inventory, CIPA
+  | 'PROJECT_TASK_CREATE'
+  | 'PROJECT_TASK_UPDATE'
+  | 'PROJECT_TASK_DELETE'
+  | 'INVENTORY_COUNT_RECORD'
+  | 'INVENTORY_CONFIG_UPDATE'
+  | 'CIPA_MEMBER_ADD'
+  | 'CIPA_MEMBER_UPDATE'
+  | 'CIPA_MEMBER_DELETE'
+  // Exports & System
+  | 'EXPORT_EXCEL'
+  | 'EXPORT_CSV'
+  | 'EXPORT_PDF'
+  | 'SETTINGS_UPDATE'
+  | 'SYSTEM_ACTION';
+
+export type AuditCategory =
+  | 'AUTH_SECURITY'
+  | 'PERMISSIONS_RBAC'
+  | 'OCCURRENCES'
+  | 'LOGISTICS_OPS'
+  | 'VEHICLES'
+  | 'PROJECTS_KANBAN'
+  | 'INVENTORY'
+  | 'CIPA'
+  | 'SETTINGS'
+  | 'DATA_EXPORT';
+
+export type AuditSeverity = 'info' | 'success' | 'warning' | 'critical';
+
+export interface AuditLog {
+  id?: string;
+  timestamp: any; // Firestore Timestamp or ISO string / number
+  createdAtClient?: string;
+  action: AuditActionType | string;
+  category: AuditCategory;
+  severity: AuditSeverity;
+  actorId: string;
+  actorName: string;
+  actorEmail?: string;
+  actorRole?: UserRole | string;
+  actorDepartment?: string;
+  targetId?: string;
+  targetType?: string;
+  targetName?: string;
+  description: string;
+  details?: Record<string, any>;
+  clientInfo?: {
+    userAgent?: string;
+    platform?: string;
+    url?: string;
+  };
+  ipAddress?: string;
+}
+
+// --- Notifications & Real-Time Alerts ---
+export type NotificationType = 
+  | 'occurrence'
+  | 'critical_alert'
+  | 'receiving_schedule'
+  | 'inventory'
+  | 'project_task'
+  | 'security_auth'
+  | 'cipa_safety'
+  | 'broadcast'
+  | 'vehicle_fleet'
+  | 'system_info';
+
+export type NotificationSeverity = 'info' | 'success' | 'warning' | 'critical';
+
+export type NotificationTargetType = 'all' | 'department' | 'role' | 'user';
+
+export interface SystemNotification {
+  id?: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  severity: NotificationSeverity;
+  targetType: NotificationTargetType;
+  targetDepartment?: DepartmentId | 'admin' | 'viewer' | 'all';
+  targetRole?: UserRole | string;
+  targetUserId?: string;
+  linkTab?: string;
+  linkParams?: Record<string, any>;
+  timestamp: any; // Firestore Timestamp or Date / number
+  createdAtClient?: number;
+  createdBy?: {
+    uid?: string;
+    name?: string;
+    email?: string;
+    departmentId?: string;
+  };
+  readBy: string[]; // List of user IDs or department IDs who read this notification
+  isPinned?: boolean;
+  soundAlert?: boolean;
+  actionLabel?: string;
+}
+
+
