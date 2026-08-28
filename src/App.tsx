@@ -954,36 +954,6 @@ function OccurrenceList({ occurrences }: { occurrences: any[] }) {
   );
 }
 
-// --- News Ticker ---
-
-function NewsTicker({ occurrences, isTVMode }: { occurrences: any[], isTVMode?: boolean }) {
-  const tickerText = occurrences.length > 0
-    ? occurrences
-        .map(occ => `[${occ.deptName}] ${occ.description} (${occ.severity.toUpperCase()})`)
-        .join(' • ')
-    : "MARSIL LOG NEWS: OPERAÇÃO NORMAL - SEM OCORRÊNCIAS NO MOMENTO";
-
-  return (
-    <div className={`bg-neutral-900 text-yellow-400 overflow-hidden whitespace-nowrap shadow-lg border-b border-yellow-400/20 ${
-      isTVMode ? 'py-3 w-full sticky top-0 z-[120]' : 'py-2 sm:py-3 -mx-4 md:-mx-10 -mt-4 md:-mt-10 mb-6 md:mb-10 sticky top-0 z-50'
-    }`}>
-      <motion.div
-        animate={{ x: ["0%", "-100%"] }}
-        transition={{ 
-          duration: 40 + (tickerText.length / 10), 
-          repeat: Infinity, 
-          ease: "linear" 
-        }}
-        className="inline-block pl-[100%]"
-      >
-        <span className={`${isTVMode ? 'text-xl' : 'text-sm sm:text-lg'} font-bold font-mono tracking-wider uppercase`}>
-          {tickerText} • {tickerText} • {tickerText}
-        </span>
-      </motion.div>
-    </div>
-  );
-}
-
 // --- Dashboard View ---
 
 function DashboardView() {
@@ -1134,8 +1104,6 @@ function DashboardView() {
 
   return (
     <div className={`flex flex-col ${isTVMode ? 'fixed inset-0 z-[100] bg-neutral-50 dark:bg-neutral-950 overflow-auto' : 'space-y-10'}`}>
-      <NewsTicker occurrences={allOccurrences} isTVMode={isTVMode} />
-      
       <div className={isTVMode ? 'p-12 space-y-12' : ''}>
         <AnimatePresence>
           {showNotification && (
