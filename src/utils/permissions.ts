@@ -232,7 +232,7 @@ export const MODULE_PERMISSIONS_MATRIX: ModulePermissionConfig[] = [
       admin: ['view', 'export'],
       manager: ['view'],
       operator: [],
-      viewer: ['view'],
+      viewer: [],
     },
   },
   {
@@ -329,7 +329,7 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
   audit_logs: {
     tabId: 'audit_logs',
     name: 'Trilha de Auditoria (Audit Logs)',
-    allowedDepartments: ['admin', 'viewer'],
+    allowedDepartments: ['admin'],
     description: 'Visualização completa da trilha de auditoria e conformidade da empresa.',
   },
   settings: {

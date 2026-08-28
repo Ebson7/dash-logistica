@@ -90,6 +90,8 @@ export interface BoraceiaShipment {
   driverName: string;
   departureTime: string;
   arrivalTimeSP: string;
+  arrivalDateSP?: string; // Data real de chegada em SP (ex: no dia seguinte)
+  isNextDayArrival?: boolean; // Chegada no dia seguinte (D+1) ou após às 21h
   status?: 'Agendado' | 'Em Trânsito' | 'Descarregando' | 'Em Retorno SP' | 'Finalizado';
   observation?: string;
 }

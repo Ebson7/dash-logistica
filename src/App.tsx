@@ -558,7 +558,7 @@ function Sidebar({ activeTab, setActiveTab, activeSubTab, setActiveSubTab, isOpe
   const filteredMenu = profile?.departmentId === 'admin'
     ? allMenuItems 
     : profile?.departmentId === 'viewer'
-      ? allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'recebimento' || item.id === 'projetos' || item.id === 'cipa' || item.id === 'inventario_geral' || item.id === 'audit_logs')
+      ? allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'recebimento' || item.id === 'projetos' || item.id === 'cipa' || item.id === 'inventario_geral')
       : allMenuItems.filter(item => item.id === 'dashboard' || item.id === 'projetos' || item.id === 'cipa' || item.id === 'inventario_geral' || item.id === profile?.departmentId);
 
   const categories: { key: 'main' | 'ops' | 'mgmt'; label: string }[] = [
@@ -1552,7 +1552,13 @@ function DashboardView() {
                             <span className="text-neutral-400">Saída SP:</span> <strong className="text-neutral-800 dark:text-neutral-200">{shipment.departureTime || '--:--'}</strong>
                           </span>
                           <span className="flex items-center gap-1 font-medium">
-                            <span className="text-neutral-400">Chegada SP:</span> <strong className="text-neutral-800 dark:text-neutral-200">{shipment.arrivalTimeSP || '--:--'}</strong>
+                            <span className="text-neutral-400">Chegada SP:</span> 
+                            <strong className="text-neutral-800 dark:text-neutral-200">{shipment.arrivalTimeSP || '--:--'}</strong>
+                            {shipment.isNextDayArrival && (
+                              <span className="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-extrabold px-1.5 py-0.2 rounded ml-1">
+                                D+1
+                              </span>
+                            )}
                           </span>
                         </div>
 
