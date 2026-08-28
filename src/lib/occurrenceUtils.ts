@@ -142,20 +142,16 @@ export async function addCommentToOccurrence({
         targetDepartment: dept,
         linkTab: dept,
         actionLabel: 'Ver Ocorrência',
-        createdBy: {
-          uid: profile?.uid || 'system',
-          name: newComment.authorName,
-          department: profile?.departmentId
-        }
+        actorProfile: profile
       });
 
       await logAuditEvent({
-        action: 'comment_created',
-        category: 'operations',
-        target: `Ocorrência (${dept})`,
-        details: `Comentário adicionado: "${newComment.text.slice(0, 60)}"`,
+        action: 'COMMENT_ADD',
+        category: 'OCCURRENCES',
+        description: `Comentário adicionado por ${newComment.authorName}: "${newComment.text.slice(0, 60)}"`,
+        targetName: `Ocorrência (${dept})`,
         severity: 'info',
-        user: profile
+        actorProfile: profile
       });
     } catch (err) {
       console.error('Failed to send notification for comment:', err);

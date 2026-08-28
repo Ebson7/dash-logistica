@@ -88,6 +88,10 @@ import { NotificationToasts } from './components/NotificationToasts';
 import { BroadcastAlertModal } from './components/BroadcastAlertModal';
 import { TopBarHeader } from './components/TopBarHeader';
 import { sendSystemNotification } from './utils/notificationService';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
+import { OfflineStatusBanner } from './components/OfflineStatusBanner';
+import { InstallPwaBanner } from './components/InstallPwaBanner';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 // --- Error Handling ---
 
@@ -755,6 +759,17 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
 
+  // PWA & Network Offline Hooks
+  const {
+    isOnline,
+    wasOffline,
+    canInstall,
+    isIOS,
+    isStandalone,
+    triggerInstallPrompt,
+    dismissInstallPrompt
+  } = useNetworkStatus();
+
   // Unified Real-Time Notification & Alert Hook
   const {
     notifications,
@@ -781,6 +796,9 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
 
   return (
     <div className="flex min-h-screen bg-neutral-50 dark:bg-neutral-950 transition-colors duration-300">
+      {/* Offline Connectivity Status Banner */}
+      <OfflineStatusBanner isOnline={isOnline} wasOffline={wasOffline} />
+
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -806,7 +824,7 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
           profile={profile}
         />
 
-        <main className="flex-1 p-4 md:p-10 overflow-auto">
+        <main className="flex-1 p-4 md:p-10 pb-24 lg:pb-10 overflow-auto">
           <AccessGuard activeTab={activeTab} profile={profile} onRedirect={(tabId) => setActiveTab(tabId)}>
             <AnimatePresence mode="wait">
               <motion.div
@@ -878,6 +896,26 @@ function AuthContent({ activeTab, setActiveTab }: { activeTab: string, setActive
           isOpen={isBroadcastModalOpen}
           onClose={() => setIsBroadcastModalOpen(false)}
           currentUserProfile={profile}
+        />
+
+        {/* Install PWA Prompt Banner (Android/Desktop/iOS) */}
+        <InstallPwaBanner
+          canInstall={canInstall}
+          isIOS={isIOS}
+          isStandalone={isStandalone}
+          onInstall={triggerInstallPrompt}
+          onDismiss={dismissInstallPrompt}
+        />
+
+        {/* Mobile Bottom Navigation Bar (< 1024px) */}
+        <MobileBottomNav
+          activeTab={activeTab}
+          onSelectTab={(tabId) => setActiveTab(tabId)}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+          onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
+          unreadCount={unreadCount}
+          unreadCriticalCount={unreadCriticalCount}
+          profile={profile}
         />
 
         {/* Global Floating Occurrence Chatbot */}
@@ -1858,20 +1896,16 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
             isPinned: isCritical,
             linkTab: departmentId,
             actionLabel: `Ver ${deptName}`,
-            createdBy: {
-              uid: profile?.uid || 'user',
-              name: profile?.displayName || 'Operador',
-              department: departmentId
-            }
+            actorProfile: profile
           });
 
           await logAuditEvent({
-            action: isCritical ? 'critical_alert_broadcast' : 'occurrence_created',
-            category: 'operations',
-            target: `Setor ${deptName}`,
-            details: `Ocorrência ${isCritical ? 'CRÍTICA ' : ''}registrada: "${occurrenceTitle}" (Gravidade: ${severity})`,
+            action: isCritical ? 'CRITICAL_ALERT_BROADCAST' : 'OCCURRENCE_CREATE',
+            category: 'OCCURRENCES',
+            description: `Ocorrência ${isCritical ? 'CRÍTICA ' : ''}registrada: "${occurrenceTitle}" (Gravidade: ${severity})`,
+            targetName: `Setor ${deptName}`,
             severity: isCritical ? 'critical' : severity === 'high' ? 'warning' : 'info',
-            user: profile
+            actorProfile: profile
           });
         } catch (err) {
           console.error('Failed to dispatch notification for occurrence:', err);

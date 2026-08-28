@@ -185,20 +185,16 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
           isPinned: isCritical,
           linkTab: selectedDept,
           actionLabel: `Ver ${deptName}`,
-          createdBy: {
-            uid: profile?.uid || 'chatbot',
-            name: profile?.displayName || 'Assistente IA',
-            department: profile?.departmentId
-          }
+          actorProfile: profile
         });
 
         await logAuditEvent({
-          action: isCritical ? 'critical_alert_broadcast' : 'occurrence_created',
-          category: 'operations',
-          target: `Assistente IA / ${deptName}`,
-          details: `Ocorrência ${isCritical ? 'CRÍTICA ' : ''}criada: "${title.trim()}" (Gravidade: ${severity})`,
+          action: isCritical ? 'CRITICAL_ALERT_BROADCAST' : 'OCCURRENCE_CREATE',
+          category: 'OCCURRENCES',
+          description: `Ocorrência ${isCritical ? 'CRÍTICA ' : ''}criada: "${title.trim()}" (Gravidade: ${severity})`,
+          targetName: `Assistente IA / ${deptName}`,
           severity: isCritical ? 'critical' : severity === 'high' ? 'warning' : 'info',
-          user: profile
+          actorProfile: profile
         });
       } catch (err) {
         console.error('Error dispatching chatbot occurrence notification:', err);
