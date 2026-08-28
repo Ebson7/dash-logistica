@@ -39,6 +39,35 @@
         "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'"
       }
     },
+    "logs": {
+      "title": "Logs Diários Departamentais",
+      "description": "Registros diários operacionais, presenças, métricas de estoque/paletes e ocorrências dos setores",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Data do registro (YYYY-MM-DD)" },
+        "departmentId": { "type": "string", "description": "Setor responsável" },
+        "staffPresent": { "type": "number", "description": "Total de colaboradores presentes" },
+        "staffByRole": { "type": "object", "description": "Colaboradores presentes por função" },
+        "data": { "type": "object", "description": "Métricas operacionais específicas do setor (posições, paletes, pedidos, etc.)" },
+        "occurrences": { "type": "array", "description": "Lista de ocorrências registradas no dia" },
+        "updatedAt": { "type": "string", "description": "Timestamp da última atualização" },
+        "updatedBy": { "type": "string", "description": "UID do usuário" }
+      },
+      "required": ["date", "departmentId"]
+    },
+    "appointments": {
+      "title": "Agendamentos de Recebimento",
+      "description": "Grade de horários e agendamentos de carretas, paletes e fornecedores",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Data do agendamento (YYYY-MM-DD)" },
+        "time": { "type": "string", "description": "Horário previsto" },
+        "supplier": { "type": "string", "description": "Fornecedor" },
+        "pallets": { "type": "number", "description": "Quantidade de paletes" },
+        "status": { "type": "string", "description": "Status do recebimento" }
+      },
+      "required": ["date", "supplier"]
+    },
     "department_entries": {
       "title": "Lançamentos Departamentais",
       "description": "Registros de dados diários preenchidos por cada setor",

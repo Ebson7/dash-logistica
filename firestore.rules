@@ -29,7 +29,6 @@ service cloud.firestore {
     // --- Users Collection ---
     match /users/{userId} {
       allow read: if isAuthenticated();
-      // Allow user to write/update their own profile, or admin to manage any profile
       allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
@@ -37,31 +36,30 @@ service cloud.firestore {
     // --- Security & System Settings ---
     match /settings/{settingId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
-    
+
     // --- Master Departments ---
     match /departments/{deptId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
-    
-    // --- Department Daily Entries ---
-    match /department_entries/{entryId} {
+
+    // --- Daily Logs & Department Metrics (Boracéia, Estoque, Recebimento, Romaneio, Veículos, Exp. Loja) ---
+    match /logs/{logId} {
       allow read: if isAuthenticated();
       allow create, update: if isNotViewer();
       allow delete: if isAdmin();
     }
-    
-    // --- Collaborators Directory ---
-    match /collaborators/{collabId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isNotViewer();
-      allow delete: if isAdmin();
-    }
-    
-    // --- Daily Logs & Occurrences ---
+
+    // --- Daily Logs alias ---
     match /daily_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
+      allow delete: if isAdmin();
+    }
+
+    match /department_entries/{entryId} {
       allow read: if isAuthenticated();
       allow create, update: if isNotViewer();
       allow delete: if isAdmin();
@@ -73,13 +71,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // --- Checklist Templates ---
-    match /checklist_templates/{templateId} {
+    // --- Appointments / Agenda de Recebimento ---
+    match /appointments/{appId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create, update, delete: if isNotViewer();
     }
 
-    // --- Agenda Recebimento ---
     match /agenda_recebimento/{agendaId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isNotViewer();
@@ -87,10 +84,35 @@ service cloud.firestore {
 
     match /agenda_settings/{settingId} {
       allow read: if isAuthenticated();
-      allow write: if isDepartment('recebimento') || isAdmin();
+      allow write: if isNotViewer();
     }
 
-    // --- Kanban Projects & Actions ---
+    // --- Real-time User Presence ---
+    match /presence/{presenceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // --- Real-time System Notifications ---
+    match /system_notifications/{notifId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // --- Collaborators Directory ---
+    match /collaborators/{collabId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isNotViewer();
+      allow delete: if isAdmin();
+    }
+
+    // --- Checklist Templates ---
+    match /checklist_templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if isNotViewer();
+    }
+
+    // --- Kanban Projects & Cards ---
     match /kanban_projects/{projectId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isNotViewer();
@@ -104,7 +126,7 @@ service cloud.firestore {
     // --- Fleet & Vehicles ---
     match /vehicles/{vehicleId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isDepartment('veiculos') || isAdmin();
+      allow create, update, delete: if isNotViewer();
     }
 
     match /vehicles_checklists/{chkId} {
@@ -119,6 +141,11 @@ service cloud.firestore {
       allow write: if isNotViewer();
     }
 
+    match /inventory_2027/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isNotViewer();
+    }
+
     match /cipa_members/{memberId} {
       allow read: if isAuthenticated();
       allow write: if isNotViewer();
@@ -128,13 +155,13 @@ service cloud.firestore {
     match /system_audit_logs/{logId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if false; // Append-only trail
+      allow update, delete: if false;
     }
-    
+
+    // Default Fallback
     match /{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
   }
 }
-

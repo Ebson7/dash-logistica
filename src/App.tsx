@@ -1127,7 +1127,7 @@ function DashboardView() {
     // We fetch all logs for the selected date to build the dashboard and occurrences
     const q = query(collection(db, 'logs'), where('date', '==', filterDate));
     const unsubLogs = onSnapshot(q, (snapshot) => {
-      setLogs(snapshot.docs.map(doc => doc.data()));
+      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'logs');
     });
@@ -1837,14 +1837,29 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
     const logRef = collection(db, 'logs');
     const existingLog = logs.find(l => l.date === today);
 
+    // Clean and normalize extraData numerical values
+    const cleanExtraData: Record<string, any> = { ...extraData };
+    fields.forEach(field => {
+      if (field.type === 'number') {
+        cleanExtraData[field.name] = cleanExtraData[field.name] === '' || cleanExtraData[field.name] === undefined || cleanExtraData[field.name] === null
+          ? 0
+          : (Number(cleanExtraData[field.name]) || 0);
+      }
+    });
+
+    const cleanStaffByRole: Record<string, number> = {};
+    roles.forEach((r: string) => {
+      cleanStaffByRole[r] = Number(staffByRole[r]) || 0;
+    });
+
     const logData = {
       date: today,
       departmentId,
-      staffPresent,
-      staffByRole,
-      data: extraData,
+      staffPresent: Number(staffPresent) || 0,
+      staffByRole: cleanStaffByRole,
+      data: cleanExtraData,
       updatedAt: serverTimestamp(),
-      updatedBy: profile?.uid
+      updatedBy: profile?.uid || 'user'
     };
 
     try {
@@ -1854,9 +1869,30 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
         await addDoc(logRef, { ...logData, occurrences: [] });
       }
       setSaveStatus('saved');
+
+      try {
+        const deptName = DEPARTMENTS[departmentId]?.name || departmentId;
+        await logAuditEvent({
+          action: 'DAILY_LOG_UPDATE',
+          category: 'LOGISTICS_OPS',
+          description: `Atualização dos dados operacionais e equipe de ${deptName} (${today}).`,
+          targetName: deptName,
+          severity: 'info',
+          actorProfile: profile,
+          details: {
+            departmentId,
+            staffPresent: Number(staffPresent) || 0,
+            metrics: cleanExtraData
+          }
+        });
+      } catch (auditErr) {
+        console.warn('Audit log write error:', auditErr);
+      }
+
       setTimeout(() => setSaveStatus('idle'), 3500);
     } catch (error) {
       setSaveStatus('idle');
+      console.error('Error saving department log:', error);
       handleFirestoreError(error, OperationType.WRITE, `logs/${existingLog?.id || 'new'}`);
     }
   };
@@ -2056,9 +2092,10 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
                 <div className="relative">
                   <input 
                     type="number" 
-                    value={staffPresent}
+                    value={staffPresent !== undefined && staffPresent !== null ? staffPresent : ''}
                     disabled={isViewer}
-                    onChange={(e) => setStaffPresent(parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                    onChange={(e) => setStaffPresent(e.target.value === '' ? ('' as any) : (parseInt(e.target.value) || 0))}
                     className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400 bg-neutral-100 dark:bg-neutral-700 px-2.5 py-1 rounded-lg">
@@ -2078,9 +2115,10 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
                       <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-300 mb-1.5">{role}</label>
                       <input 
                         type="number"
-                        value={staffByRole[role] || 0}
+                        value={staffByRole[role] !== undefined && staffByRole[role] !== null ? staffByRole[role] : ''}
                         disabled={isViewer}
-                        onChange={(e) => setStaffByRole({...staffByRole, [role]: parseInt(e.target.value) || 0})}
+                        placeholder="0"
+                        onChange={(e) => setStaffByRole({...staffByRole, [role]: e.target.value === '' ? ('' as any) : (parseInt(e.target.value) || 0)})}
                         className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
@@ -2098,9 +2136,10 @@ function DepartmentView({ departmentId, title, fields, customBanner }: { departm
                         {field.type === 'number' ? (
                           <input 
                             type="number" 
-                            value={extraData[field.name] || 0}
+                            value={extraData[field.name] !== undefined && extraData[field.name] !== null ? extraData[field.name] : ''}
                             disabled={isViewer}
-                            onChange={(e) => setExtraData({...extraData, [field.name]: parseInt(e.target.value) || 0})}
+                            placeholder="0"
+                            onChange={(e) => setExtraData({...extraData, [field.name]: e.target.value === '' ? '' : (parseInt(e.target.value) || 0)})}
                             className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                         ) : field.type === 'multiselect' ? (
