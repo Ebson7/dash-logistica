@@ -26,7 +26,7 @@ export function InstallPwaBanner({
 
   return (
     <>
-      <div className="fixed bottom-16 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-40">
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-40">
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

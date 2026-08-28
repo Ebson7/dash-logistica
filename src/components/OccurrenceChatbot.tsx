@@ -223,16 +223,16 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
 
   return (
     <>
-      {/* Floating Action Button (Chatbot Style) */}
-      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+      {/* Floating Action Button (Chatbot Style) - Raised on mobile to avoid bottom nav bar */}
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 right-3 sm:right-6 z-40 flex items-center gap-3 pointer-events-auto">
         <motion.button
           onClick={() => setIsOpen(!isOpen)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className={`relative flex items-center gap-3 px-5 py-3.5 rounded-full font-black text-sm shadow-2xl transition-all ${
+          className={`relative flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-3.5 rounded-full font-black text-xs sm:text-sm shadow-2xl transition-all border border-white/20 backdrop-blur-sm ${
             isOpen 
-              ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' 
-              : 'bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 text-white shadow-red-500/30'
+              ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-neutral-900/40' 
+              : 'bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 text-white shadow-red-500/40'
           }`}
         >
           {/* Animated pulse ring */}
@@ -244,16 +244,16 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
             {isOpen ? (
               <X size={20} />
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
                   <Bot size={15} className="text-white" />
                 </div>
-                <MessageSquareWarning size={18} />
+                <MessageSquareWarning size={17} />
               </div>
             )}
           </div>
 
-          <span className="relative hidden sm:inline-block">
+          <span className="relative hidden xs:inline-block sm:inline-block font-extrabold">
             {isOpen ? 'Fechar' : 'Registrar Ocorrência'}
           </span>
 
@@ -273,7 +273,7 @@ export function OccurrenceChatbot({ currentDepartmentId = 'recebimento', onOccur
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[460px] bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col max-h-[82vh]"
+            className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:bottom-24 right-2 sm:right-6 z-50 w-[calc(100vw-16px)] sm:w-[460px] bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col max-h-[calc(100vh-6.5rem-env(safe-area-inset-bottom,0px))] sm:max-h-[82vh]"
           >
             {/* Header */}
             <div className="p-4 sm:p-5 bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900 text-white flex items-center justify-between">
