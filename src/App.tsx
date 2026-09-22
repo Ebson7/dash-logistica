@@ -3725,7 +3725,7 @@ function BoraceiaView() {
           </div>
         </div>
         <a
-          href="https://report-estoque.vercel.app/"
+          href="https://reposi-o-de-estoque-bc.vercel.app/"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0 whitespace-nowrap"

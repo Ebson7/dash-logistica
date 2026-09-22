@@ -55,7 +55,7 @@ export const EXTERNAL_SYSTEM_LINKS: ExternalLinkItem[] = [
     id: 'estoque_boraceia',
     title: 'Consulta Estoque Boracéia',
     subtitle: 'Aplicação de consulta de estoque Boracéia',
-    url: 'https://report-estoque.vercel.app/',
+    url: 'https://reposi-o-de-estoque-bc.vercel.app/',
     iconName: 'Package',
     category: 'Estoque',
     badge: 'Boracéia',
